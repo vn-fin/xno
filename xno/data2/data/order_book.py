@@ -55,3 +55,16 @@ def parse_from_external_kafka(raw):
         "total_bid": raw['total_bid'],
         "total_ask": raw['total_ask'],
     }
+
+def parse_from_external_db(raw):
+    raw = raw._mapping
+    return {
+        "symbol": raw['symbol'],
+        "bp": raw['bp'],
+        "bq": raw['bq'],
+        "ap": raw['ap'],
+        "aq": raw['aq'],
+        "time": raw['time'].timestamp() * 1_000,
+        "total_bid": raw['total_bid'],
+        "total_ask": raw['total_ask'],
+    }

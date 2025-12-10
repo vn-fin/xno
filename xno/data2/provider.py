@@ -1,10 +1,12 @@
 import logging
 import threading
+from datetime import datetime
+from openpyxl.chart.chartspace import ExternalData
 
 from xno.connectors.semaphore import DistributedSemaphore
-from xno.data2.external import OHLCVExternalService
-import xno.data2.db.ohlcv as OHLCV_db
-import xno.data2.db.order_book as OrderBook_db
+from xno.data2.external import ExternalDataService
+import xno.data2.data.ohlcv as OHLCV_db
+import xno.data2.data.order_book as OrderBook_db
 from xno.utils.dc import timing
 
 logger = logging.getLogger(__name__)
@@ -12,14 +14,14 @@ logger = logging.getLogger(__name__)
 
 class DataProvider:
     def __init__(self, consumer_config: dict, ohlcv_db: str = "ohlcv_db"):
-        self._ohlcv_external_service = OHLCVExternalService(consumer_config=consumer_config, db_name=ohlcv_db)
+        self._external_data_service = ExternalDataService(consumer_config=consumer_config, db_name=ohlcv_db)
         self._ohlcv_sync_locks = {}
 
     def start(self):
         if __debug__:
             logger.debug("Starting data provider")
-        self._ohlcv_external_service.start(on_consume_ohlcv=self._on_consume_ohlcv,
-                                           on_consume_order_book=self._on_consume_order_book)
+        self._external_data_service.start(on_consume_ohlcv=self._on_consume_ohlcv,
+                                          on_consume_order_book=self._on_consume_order_book)
 
     def _on_consume_ohlcv(self, raw):
         """
@@ -36,7 +38,7 @@ class DataProvider:
         OrderBook_db.push(order_book)
 
     def stop(self):
-        self._ohlcv_external_service.stop()
+        self._external_data_service.stop()
 
     @timing
     def get_ohlcv(self, symbol: str, resolution: str, from_time=None, to_time=None):
@@ -52,6 +54,14 @@ class DataProvider:
         return ohlcv_data
 
     def _sync_ohlcv_from_db(self, symbol: str, resolution: str, from_time=None, to_time=None):
+        """
+        Sync OHLCV data from external DB to local DB
+        1. Check if there is an ongoing sync for the same symbol and resolution
+        2. If not, create a lock and start syncing
+        3. If yes, wait for the ongoing sync to complete
+        4. Once sync is complete, release the lock
+        5. Return
+        """
         lock_key = f"ohlcv_sync_{symbol}_{resolution}"
         if lock_key not in self._ohlcv_sync_locks:
             # First time sync, create a lock for this symbol and resolution
@@ -60,7 +70,7 @@ class DataProvider:
 
             with DistributedSemaphore(lock_key=lock_key):
                 logger.debug(f"Syncing OHLCV data for {symbol} at {resolution} from DB")
-                raws = self._ohlcv_external_service.get_ohlcv(symbol=symbol, resolution=resolution)
+                raws = self._external_data_service.get_ohlcv(symbol=symbol, resolution=resolution)
 
             # Save to local DB
             OHLCV_db.sync_from_external_db(symbol=symbol, resolution=resolution, raws=raws)
@@ -82,8 +92,25 @@ class DataProvider:
         """
         return OrderBook_db.get(symbol, depth)
 
-    def get_order_book_history(self, symbol: str, from_time=None, to_time=None):
-        return f"Order book history fetched"
+    def get_history_order_book_depths(self, symbol: str, from_time: str | datetime | None = None,
+                                      to_time: str | datetime | None = None) -> list:
+        """
+        Get Order Book depth history for a given symbol from external DB
+        1. Fetch data from external DB
+        2. Parse and return the data
+        """
+        if isinstance(from_time, str):
+            from_time = datetime.fromisoformat(from_time)
+        if isinstance(to_time, str):
+            to_time = datetime.fromisoformat(to_time)
+
+        lock_key = f"order_book_sync_{symbol}"
+        with DistributedSemaphore(lock_key=lock_key):
+            logger.debug(f"Syncing OrderBook history data for {symbol} from DB")
+            raws = self._external_data_service.get_order_book_depths(symbol=symbol, from_time=from_time,
+                                                                     to_time=to_time)
+
+        return [OrderBook_db.parse_from_external_db(raw) for raw in raws]
 
     def get_trade_ticks(self, symbol: str, from_time=None, to_time=None):
         return f"Trades data fetched"

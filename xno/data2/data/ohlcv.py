@@ -1,7 +1,7 @@
 import logging
 import pyarrow as pa
 from datetime import datetime
-from xno.data2.db.db import flush_arrow_to_duckdb, fetch_numpy
+from xno.data2.data.db import flush_arrow_to_duckdb, fetch_numpy
 
 logger = logging.getLogger(__name__)
 SCHEMA = pa.schema([
