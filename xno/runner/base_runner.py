@@ -228,6 +228,26 @@ class BaseRunner(ABC):
     def __step__(self, time_idx: int):
         raise NotImplementedError("Subclasses should implement this method.")
 
+    def get_current_bot_signal(self, state=None) -> BotSignal:
+        if state is None:
+            state = self.current_state
+        return BotSignal(
+            bot_id=state.bot_id,
+            symbol=state.symbol,
+            symbol_type=self.symbol_type,
+            candle=state.candle,
+            current_price=state.current_price,
+            current_weight=state.current_weight,
+            current_action=state.current_action,
+            bt_mode=state.bt_mode,
+            engine=state.engine,
+        )
+
+    def get_current_bot_state(self, state=None) -> BotState:
+        if state is None:
+            state = self.current_state
+        return state
+
     def __send_signal__(self):
         """
         Send the latest strategy signal to Kafka and Redis
@@ -242,17 +262,7 @@ class BaseRunner(ABC):
         # Retrieve previous signal JSON (bytes or str)
         prev_raw = RedisClient.hget(name=self.redis_latest_signal_key, key=bot_id)
         # Build current signal model
-        current_signal = BotSignal(
-            bot_id=state.bot_id,
-            symbol=state.symbol,
-            symbol_type=self.symbol_type,
-            candle=state.candle,
-            current_price=state.current_price,
-            current_weight=state.current_weight,
-            current_action=state.current_action,
-            bt_mode=state.bt_mode,
-            engine=state.engine,
-        )
+        current_signal = self.get_current_bot_signal(state)
         if prev_raw is not None:
             # Load signal
             prev_signal = BotSignal.from_str(prev_raw)
