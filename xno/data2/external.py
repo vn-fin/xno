@@ -1,12 +1,12 @@
-import json
 import logging
 import threading
 import time
 from datetime import datetime
-from typing import Any, Dict, Optional, Callable
-from sqlalchemy import text
+from typing import Any, Callable, Dict, Optional
+
+import orjson
 from confluent_kafka import Consumer, KafkaError, KafkaException
-from websockets import Data
+from sqlalchemy import text
 
 from xno.connectors.sql import SqlSession
 
@@ -15,18 +15,7 @@ logger = logging.getLogger(__name__)
 
 class DataKafkaConsumer:
     """
-    Consume OHLCV messages from Confluent Kafka and save to DuckDB.
-
-    Example:
-        consumer = KafkaOHLCVConsumer(
-            bootstrap_servers="localhost:9092",
-            topic="ohlcv",
-            group_id="xno-ohlcv",
-            table="ohlcv",
-        )
-        consumer.start()
-        ...
-        consumer.stop()
+    Consume OHLCV/OrderBook messages from Confluent Kafka.
     """
 
     def __init__(self, topic: str, **kwargs) -> None:
@@ -55,15 +44,17 @@ class DataKafkaConsumer:
 
     def consume(self, callback: Callable) -> None:
         """Register a callback to be called on each consumed message."""
-        self._thread = threading.Thread(target=self._t_consume, name="KafkaOHLCVConsumer", daemon=True,
-                                        args=(callback,))
+        self._thread = threading.Thread(
+            target=self._t_consume, name="KafkaOHLCVConsumer", daemon=True, args=(callback,)
+        )
         self._thread.start()
 
     def _t_consume(self, callback: Callable) -> None:
         if self._consumer is None:
             raise RuntimeError("Consumer not started. Call start() before consuming.")
 
-        print(f"Consuming OHLCV data for {self._topic}")
+        if __debug__:
+            logger.debug(f"Consuming OHLCV data for {self._topic}")
         try:
             while not self._stop_event.is_set():
                 try:
@@ -91,7 +82,7 @@ class DataKafkaConsumer:
 
                 # decode message value
                 raw = msg.value()
-                callback(json.loads(raw))
+                callback(orjson.loads(raw))
         finally:
             try:
                 if self._consumer is not None:
@@ -115,61 +106,60 @@ class ExternalDataService:
         self._data_consumer.consume(self._on_consume)
 
     def _on_consume(self, raw):
-        if __debug__:
-            if not self._consumer_ohlcv_callback:
-                raise RuntimeError("Consumer not started. Call start() before consuming.")
-            if not self._consumer_order_book_callback:
-                raise RuntimeError("Consumer not started. Call start() before consuming.")
-
-        match raw['data_type']:
+        match raw["data_type"]:
             case "OH":
                 self._consumer_ohlcv_callback(raw)
             case "TP":
                 self._consumer_order_book_callback(raw)
 
-    def get_ohlcv(self, symbol: str, resolution: str, from_time=None, to_time=None):
-        print(f"Getting OHLCV data from DB for {symbol} at {resolution} resolution from database {self._database_name}")
+    def get_history_ohlcv(self, symbol: str, resolution: str, from_time=None, to_time=None):
+        if __debug__:
+            logger.debug(f"Getting OHLCV data for {symbol} at {resolution} resolution from {from_time} to {to_time}")
 
         with SqlSession(self._database_name) as session:
-            query = """
-                    SELECT time, open, high, low, close, volume
-                    FROM vn_market.history_stock_ohlcv
-                    WHERE symbol = :symbol AND resolution = :resolution \
-                    """
+            sql = """
+                  SELECT time, open, high, low, close, volume
+                  FROM vn_market.history_stock_ohlcv
+                  WHERE symbol = :symbol AND resolution = :resolution \
+                  """
             if from_time is not None:
-                query += " AND time >= :from_time"
+                sql += " AND time >= :from_time"
             if to_time is not None:
-                query += " AND time <= :to_time"
-            result = session.execute(text(query), dict(
-                symbol=symbol,
-                resolution=resolution,
-                from_time=from_time,
-                to_time=to_time
-            ))
+                sql += " AND time <= :to_time"
+
+            result = session.execute(
+                text(sql), dict(symbol=symbol, resolution=resolution, from_time=from_time, to_time=to_time)
+            )
             rows = result.fetchall()
-            print(f"Loaded {len(rows)} rows from DB for {symbol} at {resolution} resolution")
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} at {resolution} resolution")
         return rows
 
-    def get_order_book_depths(self, symbol: str, from_time: datetime | None = None, to_time: datetime | None = None):
-        print(f"Getting Order Book data from DB for {symbol} from database {self._database_name}")
+    def get_history_order_book_depths(
+        self, symbol: str, from_time: datetime | None = None, to_time: datetime | None = None
+    ):
+        if __debug__:
+            logger.debug(f"Getting depths for {symbol} since {from_time} to {to_time}")
 
         with SqlSession(self._database_name) as session:
-            query = """
-                    SELECT time, symbol, bp, bq, ap, aq, total_bid, total_ask
-                    FROM vn_market.history_stock_top_price
-                    WHERE symbol = :symbol \
-                    """
+            sql = """
+                  SELECT time, symbol, bp, bq, ap, aq, total_bid, total_ask
+                  FROM vn_market.history_stock_top_price
+                  WHERE symbol = :symbol \
+                  """
             if from_time is not None:
-                query += " AND time >= :from_time"
+                sql += " AND time >= :from_time"
             if to_time is not None:
-                query += " AND time <= :to_time"
-            result = session.execute(text(query), dict(
-                symbol=symbol,
-                from_time=from_time,
-                to_time=to_time
-            ))
+                sql += " AND time <= :to_time"
+
+            sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time))
             rows = result.fetchall()
-            print(f"Loaded {len(rows)} rows from DB for {symbol} Order Book data")
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Order Book data")
         return rows
 
     def stop(self):

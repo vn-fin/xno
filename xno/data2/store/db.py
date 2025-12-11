@@ -40,7 +40,8 @@ def execute(sql: str, params: Optional[Iterable[Any]] = None) -> None:
     else:
         conn.execute(sql)
 
-def fetch_numpy(sql: str, params: Optional[Iterable[Any]] = None) -> Any:
+
+def fetch_numpy(sql: str, params: Optional[Iterable[Any]] = None) -> dict:
     """
     Execute SQL and return results as numpy arrays.
     """
@@ -50,14 +51,6 @@ def fetch_numpy(sql: str, params: Optional[Iterable[Any]] = None) -> Any:
     else:
         result = conn.execute(sql)
     return result.fetchnumpy()
-
-def flush_arrow_to_duckdb(batch, table_name: str = "ohlcv_data") -> None:
-    """
-    Flush a pyarrow RecordBatch to DuckDB in-memory table 'ohlcv_data'.
-    """
-    conn = get_conn()
-    conn.execute(f"CREATE TABLE IF NOT EXISTS {table_name} AS SELECT * FROM batch")
-    conn.execute(f"INSERT INTO {table_name} SELECT * FROM batch")
 
 
 def close() -> None:
@@ -71,6 +64,7 @@ def close() -> None:
                 _CONN.close()
             finally:
                 _CONN = None
+
 
 # convenience alias
 connect = get_conn
