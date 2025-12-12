@@ -124,7 +124,7 @@ class DataProvider:
             return
 
         # Wait for the ongoing sync to complete
-        self._ohlcv_sync_locks[lock_key].wait(timeout=5)
+        self._ohlcv_sync_locks[lock_key].wait(timeout=20)
 
     def get_order_book_depth(self, symbol: str, depth: int = 10):
         """

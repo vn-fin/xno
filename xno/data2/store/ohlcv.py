@@ -7,6 +7,7 @@ import polars as pl
 
 from xno.data2.entity import OHLCV, OHLCVs
 from xno.data2.entity.ohlcv import POLARS_SCHEMA as OHLCV_POLARS_SCHEMA
+from xno.data2.store.db import connect
 
 logger = logging.getLogger(__name__)
 
@@ -46,8 +47,7 @@ def flush_buffers():
         buffer_df = pl.from_dicts(buffer, schema=OHLCV_POLARS_SCHEMA)
 
         polars_df = _OHLCV_HISTORY_DATA[(symbol, resolution)]
-        polars_df = pl.concat([polars_df, buffer_df]).sort("time")
-
+        polars_df = pl.concat([polars_df, buffer_df]).unique(["time"], keep="last").sort("time")
         _OHLCV_HISTORY_DATA[(symbol, resolution)] = polars_df
 
 
@@ -79,9 +79,17 @@ def get_numpy(
     if history_df is None:
         return pl.DataFrame([], schema=OHLCV_POLARS_SCHEMA).to_numpy()
 
-    history_df = history_df.filter(pl.col("time") >= from_time, pl.col("time") <= to_time)
+    # history_df = history_df.filter(pl.col("time") >= from_time, pl.col("time") <= to_time)
+    # return history_df.to_numpy()
 
-    return history_df.to_numpy()
+    sql = """
+    SELECT time, open, high, low, close, volume
+    FROM history_df
+    WHERE time >= $from_time AND time <= $to_time
+    ORDER BY time ASC
+    """
+
+    return connect().execute(sql, {"from_time": from_time, "to_time": to_time}).fetchnumpy()
 
 
 def push(symbol, resolution, ohlcv: OHLCV):
@@ -89,7 +97,7 @@ def push(symbol, resolution, ohlcv: OHLCV):
         return
 
     buffer = _OHLCV_BUFFER_DATA.setdefault((symbol, resolution), {})
-    buffer[ohlcv.time] = {"symbol": symbol, "resolution": resolution, **ohlcv.to_dict()}
+    buffer[ohlcv.time] = ohlcv.to_dict()
     _OHLCV_BUFFER_DATA[(symbol, resolution)] = buffer
 
 
@@ -97,14 +105,15 @@ def pushes(ohlcvs: OHLCVs, check_come_late: bool = False):
     if __debug__:
         logger.debug("Pushing %s OHLCV records for %s %s to DuckDB", len(ohlcvs), ohlcvs.symbol, ohlcvs.resolution)
 
-    if check_come_late:
-        valid_ohlcvs = []
-        for ohlcv in ohlcvs.ohlcvs:
-            if not _is_come_late_ohlcv(ohlcvs.symbol, ohlcvs.resolution, ohlcv):
-                valid_ohlcvs.append(ohlcv)
-        ohlcvs = OHLCVs(symbol=ohlcvs.symbol, resolution=ohlcvs.resolution, ohlcvs=valid_ohlcvs)
+    # if check_come_late:
+    #     valid_ohlcvs = []
+    #     for ohlcv in ohlcvs.ohlcvs:
+    #         if not _is_come_late_ohlcv(ohlcvs.symbol, ohlcvs.resolution, ohlcv):
+    #             valid_ohlcvs.append(ohlcv)
+    #     ohlcvs = OHLCVs(symbol=ohlcvs.symbol, resolution=ohlcvs.resolution, ohlcvs=valid_ohlcvs)
 
-    _OHLCV_HISTORY_DATA[(ohlcvs.symbol, ohlcvs.resolution)] = ohlcvs.to_polars_df().sort("time")
+    df = ohlcvs.to_polars_df().unique(["time"], keep="last").sort("time")
+    _OHLCV_HISTORY_DATA[(ohlcvs.symbol, ohlcvs.resolution)] = df
 
     if __debug__:
         logger.debug("Pushed %s OHLCV records for %s %s to DuckDB", len(ohlcvs), ohlcvs.symbol, ohlcvs.resolution)

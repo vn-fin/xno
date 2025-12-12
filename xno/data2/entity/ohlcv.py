@@ -11,8 +11,8 @@ logger = logging.getLogger(__name__)
 
 PA_SCHEMA = pa.schema(
     [
-        ("symbol", pa.string()),
-        ("resolution", pa.string()),
+        # ("symbol", pa.string()),
+        # ("resolution", pa.string()),
         ("time", pa.timestamp("ms")),
         ("open", pa.float64()),
         ("high", pa.float64()),
@@ -23,8 +23,8 @@ PA_SCHEMA = pa.schema(
 )
 
 POLARS_SCHEMA = {
-    "symbol": pl.String,
-    "resolution": pl.String,
+    # "symbol": pl.String,
+    # "resolution": pl.String,
     "time": pl.Datetime,
     "open": pl.Float64,
     "high": pl.Float64,
@@ -155,8 +155,8 @@ class OHLCVs(BaseEntity):
     def to_pyarrow(self) -> pa.Table:
         batch = pa.Table.from_arrays(
             [
-                pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
-                pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
                 pa.array([ohlcv.time for ohlcv in self.ohlcvs], pa.timestamp("ms")),
                 pa.array([float(ohlcv.open) for ohlcv in self.ohlcvs], pa.float64()),
                 pa.array([float(ohlcv.high) for ohlcv in self.ohlcvs], pa.float64()),
@@ -171,8 +171,8 @@ class OHLCVs(BaseEntity):
     def to_pyarrow_batch(self) -> pa.RecordBatch:
         batch = pa.RecordBatch.from_arrays(
             [
-                pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
-                pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
                 pa.array([ohlcv.time for ohlcv in self.ohlcvs], pa.timestamp("ms")),
                 pa.array([float(ohlcv.open) for ohlcv in self.ohlcvs], pa.float64()),
                 pa.array([float(ohlcv.high) for ohlcv in self.ohlcvs], pa.float64()),
@@ -188,8 +188,8 @@ class OHLCVs(BaseEntity):
         import pandas as pd
 
         data = {
-            "symbol": [self.symbol for _ in range(0, len(self.ohlcvs))],
-            "resolution": [self.resolution for _ in range(0, len(self.ohlcvs))],
+            # "symbol": [self.symbol for _ in range(0, len(self.ohlcvs))],
+            # "resolution": [self.resolution for _ in range(0, len(self.ohlcvs))],
             "time": [ohlcv.time for ohlcv in self.ohlcvs],
             "open": [float(ohlcv.open) for ohlcv in self.ohlcvs],
             "high": [float(ohlcv.high) for ohlcv in self.ohlcvs],
@@ -202,8 +202,8 @@ class OHLCVs(BaseEntity):
 
     def to_polars_df(self):
         data = {
-            "symbol": [self.symbol for _ in range(0, len(self.ohlcvs))],
-            "resolution": [self.resolution for _ in range(0, len(self.ohlcvs))],
+            # "symbol": [self.symbol for _ in range(0, len(self.ohlcvs))],
+            # "resolution": [self.resolution for _ in range(0, len(self.ohlcvs))],
             "time": [ohlcv.time for ohlcv in self.ohlcvs],
             "open": [float(ohlcv.open) for ohlcv in self.ohlcvs],
             "high": [float(ohlcv.high) for ohlcv in self.ohlcvs],
