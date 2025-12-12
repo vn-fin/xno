@@ -27,6 +27,10 @@ class DataKafkaConsumer:
         self._stop_event = threading.Event()
 
     def start(self) -> None:
+        """Start consuming messages from Kafka."""
+        if __debug__:
+            logger.debug(f"Starting Kafka consumer for topic {self._topic} with config {self._start_config}")
+
         self._consumer = Consumer(self._start_config)
         self._consumer.subscribe([self._topic])
         self._stop_event.clear()
@@ -44,9 +48,7 @@ class DataKafkaConsumer:
 
     def consume(self, callback: Callable) -> None:
         """Register a callback to be called on each consumed message."""
-        self._thread = threading.Thread(
-            target=self._t_consume, name="KafkaOHLCVConsumer", daemon=True, args=(callback,)
-        )
+        self._thread = threading.Thread(target=self._t_consume, name="DataKafkaConsumer", daemon=True, args=(callback,))
         self._thread.start()
 
     def _t_consume(self, callback: Callable) -> None:
@@ -54,7 +56,7 @@ class DataKafkaConsumer:
             raise RuntimeError("Consumer not started. Call start() before consuming.")
 
         if __debug__:
-            logger.debug(f"Consuming OHLCV data for {self._topic}")
+            logger.debug(f"Consuming data for {self._topic}")
         try:
             while not self._stop_event.is_set():
                 try:
@@ -85,11 +87,14 @@ class DataKafkaConsumer:
 
                 try:
                     raw = orjson.loads(raw)
-                    callback(raw)
+
+                    # TODO: limit threading count
+                    threading.Thread(target=callback, args=(raw,), daemon=True).start()
                 except Exception as e:
                     logger.error("Error processing message: %s", raw, exc_info=True)
         finally:
             try:
+                logger.warning("Closing Kafka consumer for topic %s", self._topic)
                 if self._consumer is not None:
                     self._consumer.close()
             except Exception:
@@ -122,6 +127,8 @@ class ExternalDataService:
 
     def _on_consume(self, raw):
         try:
+            # if __debug__:
+            #     logger.debug("Consumed message: %s", raw)
             match raw["data_type"]:
                 case "OH":
                     self._consumer_ohlcv_callback(raw)
@@ -160,7 +167,10 @@ class ExternalDataService:
         return rows
 
     def get_history_order_book_depths(
-        self, symbol: str, from_time: datetime | None = None, to_time: datetime | None = None
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
     ):
         if __debug__:
             logger.debug(f"Getting depths for {symbol} since {from_time} to {to_time}")

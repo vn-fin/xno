@@ -23,7 +23,7 @@ class DataProvider:
         if __debug__:
             logger.debug("Starting data provider")
 
-        OHLCV_store.init()
+        OHLCV_store.start()
 
         self._external_data_service.start(
             on_consume_ohlcv=self._on_consume_ohlcv,
@@ -61,6 +61,7 @@ class DataProvider:
         QuoteTick_store.push(quote_tick)
 
     def stop(self):
+        OHLCV_store.stop()
         self._external_data_service.stop()
 
     @timing
@@ -107,7 +108,7 @@ class DataProvider:
 
             with DistributedSemaphore(lock_key=lock_key):
                 if __debug__:
-                    logger.debug(f"Syncing OHLCV data for {symbol} at {resolution} from DB")
+                    logger.debug(f"Syncing OHLCV history data for {symbol} at {resolution} from DB")
                 raws = self._external_data_service.get_history_ohlcv(symbol=symbol, resolution=resolution)
 
             # Save to local DB
