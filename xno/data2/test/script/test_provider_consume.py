@@ -1,0 +1,22 @@
+import logging
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
+
+import time
+
+from dotenv import load_dotenv
+
+load_dotenv("../xalpha/.env")
+
+logging.basicConfig(level=logging.DEBUG)
+
+if __name__ == "__main__":
+    from xno.data2 import DataProvider
+
+    DataProvider.start()
+
+    time.sleep(60)
+    DataProvider.stop()
+    print("Data provider stopped.")
