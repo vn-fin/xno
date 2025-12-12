@@ -13,7 +13,7 @@ class TradeTick:
     symbol: str
     price: float
     volume: float
-    side: Side
+    side: str
     total_volume: int
 
     def __post_init__(self):
@@ -32,8 +32,10 @@ class TradeTick:
             raise TypeError("price must be a float")
         if not isinstance(self.volume, (float, int)):
             raise TypeError("volume must be a float")
-        if not isinstance(self.side, Side):
-            raise TypeError("side must be a Side")
+        # if not isinstance(self.side, Side):
+        #     raise TypeError("side must be a Side")
+        if not isinstance(self.side, str):
+            raise TypeError("side must be a str")
         if not isinstance(self.total_volume, int):
             raise TypeError("total_volume must be an int")
 
@@ -54,6 +56,7 @@ class TradeTick:
             symbol=str(raw["symbol"]),
             price=float(raw["price"]),
             volume=float(raw["vol"]),
-            side=Side.from_external(raw["side"]),
+            # side=Side.from_external(raw["side"]),
+            side=raw["side"],
             total_volume=int(raw["total_vol"]),
         )

@@ -2,16 +2,17 @@ import logging
 from dataclasses import dataclass
 from datetime import datetime
 
+import polars as pl
 import pyarrow as pa
 
 from xno.data2.entity.base import BaseEntity
 
 logger = logging.getLogger(__name__)
 
-_PA_SCHEMA = pa.schema(
+PA_SCHEMA = pa.schema(
     [
-        ("symbol", pa.string()),
-        ("resolution", pa.string()),
+        # ("symbol", pa.string()),
+        # ("resolution", pa.string()),
         ("time", pa.timestamp("ms")),
         ("open", pa.float64()),
         ("high", pa.float64()),
@@ -20,6 +21,17 @@ _PA_SCHEMA = pa.schema(
         ("volume", pa.float64()),
     ]
 )
+
+POLARS_SCHEMA = {
+    # "symbol": pl.String,
+    # "resolution": pl.String,
+    "time": pl.Datetime,
+    "open": pl.Float64,
+    "high": pl.Float64,
+    "low": pl.Float64,
+    "close": pl.Float64,
+    "volume": pl.Float64,
+}
 
 
 @dataclass(frozen=True)
@@ -63,6 +75,16 @@ class OHLCV(BaseEntity):
             self.close,
             self.volume,
         ]
+
+    def to_dict(self) -> dict:
+        return {
+            "time": self.time,
+            "open": self.open,
+            "high": self.high,
+            "low": self.low,
+            "close": self.close,
+            "volume": self.volume,
+        }
 
     @classmethod
     def from_external_kafka(cls, raw: object) -> "OHLCV":
@@ -130,11 +152,11 @@ class OHLCVs(BaseEntity):
     def __len__(self):
         return len(self.ohlcvs)
 
-    def to_pyarrow_batch(self) -> pa.RecordBatch:
-        batch = pa.RecordBatch.from_arrays(
+    def to_pyarrow(self) -> pa.Table:
+        batch = pa.Table.from_arrays(
             [
-                pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
-                pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
                 pa.array([ohlcv.time for ohlcv in self.ohlcvs], pa.timestamp("ms")),
                 pa.array([float(ohlcv.open) for ohlcv in self.ohlcvs], pa.float64()),
                 pa.array([float(ohlcv.high) for ohlcv in self.ohlcvs], pa.float64()),
@@ -142,9 +164,55 @@ class OHLCVs(BaseEntity):
                 pa.array([float(ohlcv.close) for ohlcv in self.ohlcvs], pa.float64()),
                 pa.array([float(ohlcv.volume) for ohlcv in self.ohlcvs], pa.float64()),
             ],
-            schema=_PA_SCHEMA,
+            schema=PA_SCHEMA,
         )
         return batch
+
+    def to_pyarrow_batch(self) -> pa.RecordBatch:
+        batch = pa.RecordBatch.from_arrays(
+            [
+                # pa.array([self.symbol for _ in range(0, len(self.ohlcvs))], pa.string()),
+                # pa.array([self.resolution for _ in range(0, len(self.ohlcvs))], pa.string()),
+                pa.array([ohlcv.time for ohlcv in self.ohlcvs], pa.timestamp("ms")),
+                pa.array([float(ohlcv.open) for ohlcv in self.ohlcvs], pa.float64()),
+                pa.array([float(ohlcv.high) for ohlcv in self.ohlcvs], pa.float64()),
+                pa.array([float(ohlcv.low) for ohlcv in self.ohlcvs], pa.float64()),
+                pa.array([float(ohlcv.close) for ohlcv in self.ohlcvs], pa.float64()),
+                pa.array([float(ohlcv.volume) for ohlcv in self.ohlcvs], pa.float64()),
+            ],
+            schema=PA_SCHEMA,
+        )
+        return batch
+
+    def to_df(self):
+        import pandas as pd
+
+        data = {
+            # "symbol": [self.symbol for _ in range(0, len(self.ohlcvs))],
+            # "resolution": [self.resolution for _ in range(0, len(self.ohlcvs))],
+            "time": [ohlcv.time for ohlcv in self.ohlcvs],
+            "open": [float(ohlcv.open) for ohlcv in self.ohlcvs],
+            "high": [float(ohlcv.high) for ohlcv in self.ohlcvs],
+            "low": [float(ohlcv.low) for ohlcv in self.ohlcvs],
+            "close": [float(ohlcv.close) for ohlcv in self.ohlcvs],
+            "volume": [float(ohlcv.volume) for ohlcv in self.ohlcvs],
+        }
+        df = pd.DataFrame(data)
+        return df
+
+    def to_polars_df(self):
+        data = {
+            # "symbol": [self.symbol for _ in range(0, len(self.ohlcvs))],
+            # "resolution": [self.resolution for _ in range(0, len(self.ohlcvs))],
+            "time": [ohlcv.time for ohlcv in self.ohlcvs],
+            "open": [float(ohlcv.open) for ohlcv in self.ohlcvs],
+            "high": [float(ohlcv.high) for ohlcv in self.ohlcvs],
+            "low": [float(ohlcv.low) for ohlcv in self.ohlcvs],
+            "close": [float(ohlcv.close) for ohlcv in self.ohlcvs],
+            "volume": [float(ohlcv.volume) for ohlcv in self.ohlcvs],
+        }
+        df = pl.DataFrame(data, schema=POLARS_SCHEMA)
+        return df
 
     @classmethod
     def from_external_db(cls, symbol: str, resolution: str, raws: list[list]) -> "OHLCVs":

@@ -17,6 +17,6 @@ if __name__ == "__main__":
 
     DataProvider.start()
 
-    time.sleep(60)
+    time.sleep(600)
     DataProvider.stop()
     print("Data provider stopped.")
