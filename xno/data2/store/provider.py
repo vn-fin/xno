@@ -4,10 +4,9 @@ from datetime import datetime
 
 import xno.data2.store.ohlcv as OHLCV_store
 import xno.data2.store.order_book_depth as OrderBookDepth_store
-import xno.data2.store.quote_tick as QuoteTick_store
 import xno.data2.store.trade_tick as TradeTick_store
 from xno.connectors.semaphore import DistributedSemaphore
-from xno.data2.entity import OHLCV, OHLCVs, OrderBookDepth, QuoteTick, TradeTick
+from xno.data2.entity import OHLCV, OHLCVs, OrderBookDepth, TradeTick
 from xno.data2.external import ExternalDataService
 from xno.utils.dc import timing
 
@@ -55,10 +54,10 @@ class DataProvider:
 
     def _on_consume_quote_tick(self, raw: dict):
         """ "
-        Received Quote Tick data from external kafka
+        Received Trade Tick data from external kafka
         """
-        quote_tick = QuoteTick.from_external_kafka(raw)
-        QuoteTick_store.push(quote_tick)
+        trade_tick = TradeTick.from_external_kafka(raw)
+        TradeTick_store.push(trade_tick)
 
     def stop(self):
         self._external_data_service.stop()
@@ -161,13 +160,8 @@ class DataProvider:
         return [OrderBookDepth.from_external_db(raw) for raw in raws]
 
     def get_trade_tick(self, symbol: str):
-        """
-        Get Trade Tick for a given symbol
-        """
         return TradeTick_store.get(symbol)
 
-    def get_quote_tick(self, symbol: str):
-        """
-        Get Quote Tick for a given symbol
-        """
-        return QuoteTick_store.get(symbol)
+    def get_quote_ticks(self, symbol: str, from_time=None, to_time=None):
+        # Placeholder method to fetch quote ticks data
+        return f"Quote ticks data fetched"

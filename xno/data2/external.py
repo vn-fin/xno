@@ -82,7 +82,12 @@ class DataKafkaConsumer:
 
                 # decode message value
                 raw = msg.value()
-                callback(orjson.loads(raw))
+
+                try:
+                    raw = orjson.loads(raw)
+                    callback(raw)
+                except Exception as e:
+                    logger.error("Error processing message: %s", raw, exc_info=True)
         finally:
             try:
                 if self._consumer is not None:
@@ -97,20 +102,38 @@ class ExternalDataService:
         self._data_consumer = DataKafkaConsumer(**consumer_config)
         self._consumer_ohlcv_callback = None
         self._consumer_order_book_callback = None
+        self._consumer_trade_tick_callback = None
+        self._consumer_quote_tick_callback = None
 
-    def start(self, on_consume_ohlcv: Callable, on_consume_order_book: Callable):
+    def start(
+        self,
+        on_consume_ohlcv: Callable,
+        on_consume_order_book: Callable,
+        on_consume_trade_tick: Callable,
+        on_consume_quote_tick: Callable,
+    ):
         self._consumer_ohlcv_callback = on_consume_ohlcv
         self._consumer_order_book_callback = on_consume_order_book
+        self._consumer_trade_tick_callback = on_consume_trade_tick
+        self._consumer_quote_tick_callback = on_consume_quote_tick
 
         self._data_consumer.start()
         self._data_consumer.consume(self._on_consume)
 
     def _on_consume(self, raw):
-        match raw["data_type"]:
-            case "OH":
-                self._consumer_ohlcv_callback(raw)
-            case "TP":
-                self._consumer_order_book_callback(raw)
+        try:
+            match raw["data_type"]:
+                case "OH":
+                    self._consumer_ohlcv_callback(raw)
+                case "TP":
+                    self._consumer_order_book_callback(raw)
+                case "ST":
+                    self._consumer_trade_tick_callback(raw)
+                case "SF":
+                    self._consumer_quote_tick_callback(raw)
+        except Exception as e:
+            logger.error("Error processing consumed message: %s", raw, exc_info=True)
+            raise e
 
     def get_history_ohlcv(self, symbol: str, resolution: str, from_time=None, to_time=None):
         if __debug__:

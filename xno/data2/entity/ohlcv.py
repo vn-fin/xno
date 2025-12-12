@@ -36,7 +36,7 @@ class OHLCV(BaseEntity):
             self.validate()
         except Exception as e:
             logger.error("Validation error in OHLCV: %s", self, exc_info=True)
-        self.validate()
+            raise e
 
     def validate(self) -> None:
         if not isinstance(self.time, datetime):

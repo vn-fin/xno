@@ -16,6 +16,8 @@ logging.basicConfig(level=logging.DEBUG)
 if __name__ == "__main__":
     from xno.data2 import DataProvider
 
+    DataProvider.start()
+
     data = DataProvider.get_ohlcv(
         symbol="ACB",
         resolution="MIN",

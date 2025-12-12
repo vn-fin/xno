@@ -1,7 +1,10 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 
 from xno.data2.entity.base import BaseEntity
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,8 +22,8 @@ class OrderBookDepth(BaseEntity):
         try:
             self.validate()
         except Exception as e:
-            print("Validation error in OrderBookDepth:", e, self)
-        self.validate()
+            logger.error("Validation error in OrderBookDepth: %s", self, exc_info=True)
+            raise e
 
     def validate(self) -> None:
         if not isinstance(self.time, datetime):
@@ -31,26 +34,28 @@ class OrderBookDepth(BaseEntity):
         if not isinstance(self.bp, list):
             raise TypeError("bp must be a list")
         for b in self.bp:
-            if not isinstance(b, float):
-                raise TypeError("bp must be a list of float")
-
+            if not isinstance(b, int | float):
+                raise TypeError("bp must be a list of int or float")
         if not isinstance(self.bq, list):
             raise TypeError("bq must be a list")
         for b in self.bq:
             if not isinstance(b, int):
                 raise TypeError("bq must be a list of int")
+        if len(self.bp) != len(self.bq):
+            raise ValueError("bp and bq must have the same length")
 
         if not isinstance(self.ap, list):
             raise TypeError("ap must be a list")
         for a in self.ap:
-            if not isinstance(a, float):
-                raise TypeError("ap must be a list of float")
-
+            if not isinstance(a, int | float):
+                raise TypeError("ap must be a list of int or float")
         if not isinstance(self.aq, list):
             raise TypeError("aq must be a list")
         for a in self.aq:
             if not isinstance(a, int):
                 raise TypeError("aq must be a list of int")
+        if len(self.ap) != len(self.aq):
+            raise ValueError("ap and aq must have the same length")
 
         if not isinstance(self.total_bid, int):
             raise TypeError("total_bid must be an int")

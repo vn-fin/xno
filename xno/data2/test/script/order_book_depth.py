@@ -1,7 +1,10 @@
+import logging
 from dataclasses import dataclass
 from datetime import datetime
 
 from xno.data2.entity.base import BaseEntity
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -19,8 +22,7 @@ class OrderBookDepth(BaseEntity):
         try:
             self.validate()
         except Exception as e:
-            print("Validation error in OrderBookDepth:", e, self)
-        self.validate()
+            logger.exception("Validation error in OrderBookDepth", exc_info=e)
 
     def validate(self) -> None:
         if not isinstance(self.time, datetime):

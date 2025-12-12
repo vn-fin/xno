@@ -1,2 +1,4 @@
+from .ohlcv import OHLCV, OHLCVs
 from .order_book_depth import OrderBookDepth
-from .ohlcv import OHLCVs, OHLCV
+from .quote_tick import QuoteTick
+from .trade_tick import TradeTick
