@@ -183,8 +183,13 @@ class BaseBacktest(abc.ABC):
 
         # === 2. Trade-level statistics ===
         total_trades = int(np.count_nonzero(self.trade_sizes))
-        total_closed_trades = int(np.count_nonzero(self.trade_sizes < 0))
-        total_open_trades = int(np.count_nonzero(self.trade_sizes > 0))
+        total_open_trades = int(self.positions[-1] != 0)
+
+        signs = np.sign(self.positions)
+        prev_signs = np.roll(signs, 1)
+        prev_signs[0] = 0 
+        total_closed_trades = len(np.where((prev_signs != 0) & (prev_signs != signs))[0])
+
 
         # === 3. Open trade unrealized PnL ===
         open_trade_pnl = float(self.pnls[-1])
@@ -203,7 +208,7 @@ class BaseBacktest(abc.ABC):
             start_value=start_value,
             end_value=end_value,
             total_return=total_return,
-            benchmark_return=None,
+            benchmark_return=self.bm_cumrets[-1],
             total_fee=total_fee,
             total_trades=total_trades,
             total_closed_trades=total_closed_trades,
