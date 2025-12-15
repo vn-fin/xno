@@ -2,6 +2,7 @@ import logging
 import threading
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 
 import xno.data2.store.market_info as MarketInfo_store
@@ -118,10 +119,10 @@ class DataProvider:
         ohlcv_data = OHLCV_store.get_numpy(symbol=symbol, resolution=resolution, from_time=from_time, to_time=to_time)
 
         if factor != 1:
-            ohlcv_data[1] = ohlcv_data[1] * factor  # Open price
-            ohlcv_data[2] = ohlcv_data[2] * factor  # High price
-            ohlcv_data[3] = ohlcv_data[3] * factor  # Low price
-            ohlcv_data[4] = ohlcv_data[4] * factor  # Close price
+            ohlcv_data["open"] = np.multiply(ohlcv_data["open"], factor)
+            ohlcv_data["high"] = np.multiply(ohlcv_data["high"], factor)
+            ohlcv_data["low"] = np.multiply(ohlcv_data["low"], factor)
+            ohlcv_data["close"] = np.multiply(ohlcv_data["close"], factor)
 
         return ohlcv_data
 
@@ -143,7 +144,7 @@ class DataProvider:
             **kwargs,
         )
 
-        return pd.DataFrame(ohlcvs_np, index=ohlcvs_np[:, 0])
+        return pd.DataFrame(ohlcvs_np, index=ohlcvs_np["time"])
 
     def _sync_ohlcv_from_db(self, symbol: str, resolution: Resolution):
         """
