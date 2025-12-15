@@ -1,17 +1,26 @@
 from .. import settings
-from .provider import DataProvider as DataProviderClass
+from .provider import DataProvider
 
-DataProvider = DataProviderClass(
-    external_db="xno_data",
-    consumer_config=dict(
-        topic=settings.kafka_market_data_topic,
-        **{
-            "bootstrap.servers": settings.kafka_bootstrap_servers,
-            "enable.auto.commit": False,
-            "group.id": "xno-data-consumer-group",
-            "auto.offset.reset": "latest",
-        },
-    ),
-)
+_DataProvider = None
 
-__all__ = ["DataProvider"]
+
+def DataProviderInstance(force: bool = False) -> DataProvider:
+    global _DataProvider
+
+    if _DataProvider is None or force:
+        _DataProvider = DataProvider(
+            external_db="xno_data",
+            consumer_config=dict(
+                topic=settings.kafka_market_data_topic,
+                **{
+                    "bootstrap.servers": settings.kafka_bootstrap_servers,
+                    "enable.auto.commit": False,
+                    "group.id": "xno-data-consumer-group",
+                    "auto.offset.reset": "latest",
+                },
+            ),
+        )
+    return _DataProvider
+
+
+__all__ = ["DataProviderInstance"]

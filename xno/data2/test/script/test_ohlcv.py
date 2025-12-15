@@ -13,17 +13,21 @@ load_dotenv("../xalpha/.env")
 
 logging.basicConfig(level=logging.DEBUG)
 
-from xno.data2 import DataProvider
+from xno.data2 import DataProviderInstance
+from xno.data2.entity.resolution import Resolution
 from xno.utils.dc import timing
 
 _close_event = threading.Event()
 _total_requests = 0
+
+DataProvider = DataProviderInstance()
 
 
 def _t_request_ohlcv(all_data, from_time, to_time):
     global _total_requests
     while not _close_event.is_set():
         symbol, resolution = random.choice(all_data)
+        resolution = Resolution.from_external(resolution)
 
         process_id = _total_requests
         _total_requests += 1
@@ -177,7 +181,7 @@ def test_ohlcv_union():
     print("Fetching OHLCV data including buffer...")
     data = DataProvider.get_ohlcv(
         symbol="ACB",
-        resolution="MIN",
+        resolution=Resolution.from_external("MIN"),
         from_time=datetime.now() - timedelta(days=1),
         to_time=datetime.now(),
     )
@@ -190,7 +194,7 @@ def monitor_ohlcv_realtime_update():
 
     data = DataProvider.get_ohlcv(
         symbol="ACB",
-        resolution="MIN",
+        resolution=Resolution.from_external("MIN"),
         from_time=datetime.now() - timedelta(days=60),
         to_time=datetime.now(),
     )
@@ -200,7 +204,7 @@ def monitor_ohlcv_realtime_update():
         time.sleep(10)
         data = DataProvider.get_ohlcv(
             symbol="ACB",
-            resolution="MIN",
+            resolution=Resolution.from_external("MIN"),
             from_time=datetime.now() - timedelta(days=60),
             to_time=datetime.now(),
         )

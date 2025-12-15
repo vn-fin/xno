@@ -9,6 +9,7 @@ from confluent_kafka import Consumer, KafkaError, KafkaException
 from sqlalchemy import text
 
 from xno.connectors.sql import SqlSession
+from xno.data2.entity.resolution import Resolution
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +156,7 @@ class ExternalDataService:
     def get_history_ohlcv(
         self,
         symbol: str,
-        resolution: str,
+        resolution: Resolution,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         limit: int | None = None,
@@ -178,8 +179,16 @@ class ExternalDataService:
 
             sql += " ORDER BY time ASC"
 
+            resolution = resolution.to_external()
             result = session.execute(
-                text(sql), dict(symbol=symbol, resolution=resolution, from_time=from_time, to_time=to_time, limit=limit)
+                text(sql),
+                dict(
+                    symbol=symbol,
+                    resolution=resolution,
+                    from_time=from_time,
+                    to_time=to_time,
+                    limit=limit,
+                ),
             )
             rows = result.fetchall()
 

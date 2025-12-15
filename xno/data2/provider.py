@@ -2,6 +2,8 @@ import logging
 import threading
 from datetime import datetime
 
+import pandas as pd
+
 import xno.data2.store.market_info as MarketInfo_store
 import xno.data2.store.ohlcv as OHLCV_store
 import xno.data2.store.order_book_depth as OrderBookDepth_store
@@ -15,6 +17,7 @@ from xno.data2.entity import (
     OHLCVs,
     OrderBookDepth,
     QuoteTick,
+    Resolution,
     StockInfo,
     TradeTick,
 )
@@ -88,9 +91,11 @@ class DataProvider:
     def get_ohlcv(
         self,
         symbol: str,
-        resolution: str,
+        resolution: Resolution | str,
         from_time: str | datetime | None = None,
         to_time: str | datetime | None = None,
+        factor: int = 1,
+        **kwargs,
     ):
         """
         Get OHLCV data for a given symbol and resolution
@@ -102,16 +107,45 @@ class DataProvider:
             from_time = datetime.fromisoformat(from_time)
         if isinstance(to_time, str):
             to_time = datetime.fromisoformat(to_time)
-
         if from_time >= to_time:
             raise ValueError("from_time must be less than to_time")
+
+        if isinstance(resolution, str):
+            resolution = Resolution.from_string(resolution)
 
         self._sync_ohlcv_from_db(symbol=symbol, resolution=resolution)
 
         ohlcv_data = OHLCV_store.get_numpy(symbol=symbol, resolution=resolution, from_time=from_time, to_time=to_time)
+
+        if factor != 1:
+            ohlcv_data[1] = ohlcv_data[1] * factor  # Open price
+            ohlcv_data[2] = ohlcv_data[2] * factor  # High price
+            ohlcv_data[3] = ohlcv_data[3] * factor  # Low price
+            ohlcv_data[4] = ohlcv_data[4] * factor  # Close price
+
         return ohlcv_data
 
-    def _sync_ohlcv_from_db(self, symbol: str, resolution: str):
+    def get_ohlcv_dataframe(
+        self,
+        symbol: str,
+        resolution: Resolution | str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        factor: int = 1,
+        **kwargs,
+    ) -> pd.DataFrame:
+        ohlcvs_np = self.get_ohlcv(
+            symbol=symbol,
+            resolution=resolution,
+            from_time=from_time,
+            to_time=to_time,
+            factor=factor,
+            **kwargs,
+        )
+
+        return pd.DataFrame(ohlcvs_np, index=ohlcvs_np[:, 0])
+
+    def _sync_ohlcv_from_db(self, symbol: str, resolution: Resolution):
         """
         Sync OHLCV data from external DB to local DB
         1. Check if there is an ongoing sync for the same symbol and resolution
