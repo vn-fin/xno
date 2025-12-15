@@ -144,7 +144,12 @@ class DataProvider:
             **kwargs,
         )
 
-        return pd.DataFrame(ohlcvs_np, index=ohlcvs_np["time"])
+        index = ohlcvs_np["time"]
+        del ohlcvs_np["time"]
+
+        df = pd.DataFrame(ohlcvs_np, index=index)
+        df.index.set_names("time", inplace=True)
+        return df
 
     def _sync_ohlcv_from_db(self, symbol: str, resolution: Resolution):
         """

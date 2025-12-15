@@ -211,11 +211,25 @@ def monitor_ohlcv_realtime_update():
         print(data)
 
 
+def test_dataframe():
+    DataProvider.start()
+
+    data = DataProvider.get_ohlcv_dataframe(
+        symbol="ACB",
+        resolution=Resolution.from_external("HOUR1"),
+        from_time=datetime.now() - timedelta(days=60),
+        to_time=datetime.now(),
+    )
+    print(data)
+    print(type(data))
+
+
 if __name__ == "__main__":
     try:
         # benchmark_get_ohlcv()
         # test_ohlcv_union()
-        monitor_ohlcv_realtime_update()
+        # monitor_ohlcv_realtime_update()
+        test_dataframe()
 
         time.sleep(600)
     finally:
