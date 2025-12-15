@@ -10,6 +10,7 @@ import xno.data2.store.ohlcv as OHLCV_store
 import xno.data2.store.order_book_depth as OrderBookDepth_store
 import xno.data2.store.quote_tick as QuoteTick_store
 import xno.data2.store.stock_info as StockInfo_store
+import xno.data2.store.stock_price_board as StockPriceBoard_store
 import xno.data2.store.trade_tick as TradeTick_store
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.data2.entity import (
@@ -20,6 +21,7 @@ from xno.data2.entity import (
     QuoteTick,
     Resolution,
     StockInfo,
+    StockPriceBoard,
     TradeTick,
 )
 from xno.data2.external import ExternalDataService
@@ -83,6 +85,10 @@ class DataProvider:
     def _on_consume_stock_info(self, raw: dict):
         stock_info = StockInfo.from_external_kafka(raw)
         StockInfo_store.push(stock_info)
+
+    def _on_consume_stock_price_board(self, raw: dict):
+        stock_price_board = StockPriceBoard.from_external_kafka(raw)
+        StockPriceBoard_store.push(stock_price_board)
 
     def stop(self):
         OHLCV_store.stop()
@@ -194,7 +200,6 @@ class DataProvider:
 
     get_stock_top_price = get_order_book_depth
 
-    @timing
     def get_history_order_book_depth(
         self,
         symbol: str,
@@ -238,7 +243,6 @@ class DataProvider:
 
     get_stock_tick = get_trade_tick
 
-    @timing
     def get_history_trade_tick(
         self,
         symbol: str,
@@ -332,3 +336,33 @@ class DataProvider:
             limit=limit,
         )
         return [StockInfo.from_external_db(raw) for raw in raws]
+
+    def get_stock_price_board(self, symbol: str):
+        """
+        Get Stock Price Board for a given symbol
+        """
+        return StockPriceBoard_store.get(symbol)
+
+    def get_history_stock_price_board(
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
+    ) -> list[StockPriceBoard]:
+        if isinstance(from_time, str):
+            from_time = datetime.fromisoformat(from_time)
+        if isinstance(to_time, str):
+            to_time = datetime.fromisoformat(to_time)
+        if from_time >= to_time:
+            raise ValueError("from_time must be less than to_time")
+        if limit and isinstance(limit, int) and limit <= 0:
+            raise ValueError("limit must be a positive integer")
+
+        raws = self._external_data_service.get_history_stock_price_board(
+            symbol=symbol,
+            from_time=from_time,
+            to_time=to_time,
+            limit=limit,
+        )
+        return [StockPriceBoard.from_external_db(raw) for raw in raws]
