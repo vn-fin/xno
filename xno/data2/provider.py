@@ -6,6 +6,7 @@ import xno.data2.store.market_info as MarketInfo_store
 import xno.data2.store.ohlcv as OHLCV_store
 import xno.data2.store.order_book_depth as OrderBookDepth_store
 import xno.data2.store.quote_tick as QuoteTick_store
+import xno.data2.store.stock_info as StockInfo_store
 import xno.data2.store.trade_tick as TradeTick_store
 from xno.connectors.semaphore import DistributedSemaphore
 from xno.data2.entity import (
@@ -14,6 +15,7 @@ from xno.data2.entity import (
     OHLCVs,
     OrderBookDepth,
     QuoteTick,
+    StockInfo,
     TradeTick,
 )
 from xno.data2.external import ExternalDataService
@@ -39,6 +41,7 @@ class DataProvider:
             on_consume_trade_tick=self._on_consume_trade_tick,
             on_consume_quote_tick=self._on_consume_quote_tick,
             on_consume_market_info=self._on_consume_market_info,
+            on_consume_stock_info=self._on_consume_stock_info,
         )
 
     def _on_consume_ohlcv(self, raw: dict):
@@ -72,6 +75,10 @@ class DataProvider:
     def _on_consume_market_info(self, raw: dict):
         market_info = MarketInfo.from_external_kafka(raw)
         MarketInfo_store.push(market_info)
+
+    def _on_consume_stock_info(self, raw: dict):
+        stock_info = StockInfo.from_external_kafka(raw)
+        StockInfo_store.push(stock_info)
 
     def stop(self):
         OHLCV_store.stop()
@@ -164,9 +171,10 @@ class DataProvider:
             from_time = datetime.fromisoformat(from_time)
         if isinstance(to_time, str):
             to_time = datetime.fromisoformat(to_time)
-
         if from_time >= to_time:
             raise ValueError("from_time must be less than to_time")
+        if limit and isinstance(limit, int) and limit <= 0:
+            raise ValueError("limit must be a positive integer")
 
         with DistributedSemaphore(lock_key=f"order_book_sync_{symbol}"):
             if __debug__:
@@ -207,9 +215,10 @@ class DataProvider:
             from_time = datetime.fromisoformat(from_time)
         if isinstance(to_time, str):
             to_time = datetime.fromisoformat(to_time)
-
         if from_time >= to_time:
             raise ValueError("from_time must be less than to_time")
+        if limit and isinstance(limit, int) and limit <= 0:
+            raise ValueError("limit must be a positive integer")
 
         raws = self._external_data_service.get_history_trade_tick(
             symbol=symbol,
@@ -241,9 +250,10 @@ class DataProvider:
             from_time = datetime.fromisoformat(from_time)
         if isinstance(to_time, str):
             to_time = datetime.fromisoformat(to_time)
-
         if from_time >= to_time:
             raise ValueError("from_time must be less than to_time")
+        if limit and isinstance(limit, int) and limit <= 0:
+            raise ValueError("limit must be a positive integer")
 
         raws = self._external_data_service.get_history_market_info(
             symbol=symbol,
@@ -252,3 +262,33 @@ class DataProvider:
             limit=limit,
         )
         return [MarketInfo.from_external_db(raw) for raw in raws]
+
+    def get_stock_info(self, symbol: str):
+        """
+        Get Stock Info for a given symbol
+        """
+        return StockInfo_store.get(symbol)
+
+    def get_history_stock_info(
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
+    ) -> list[StockInfo]:
+        if isinstance(from_time, str):
+            from_time = datetime.fromisoformat(from_time)
+        if isinstance(to_time, str):
+            to_time = datetime.fromisoformat(to_time)
+        if from_time >= to_time:
+            raise ValueError("from_time must be less than to_time")
+        if limit and isinstance(limit, int) and limit <= 0:
+            raise ValueError("limit must be a positive integer")
+
+        raws = self._external_data_service.get_history_stock_info(
+            symbol=symbol,
+            from_time=from_time,
+            to_time=to_time,
+            limit=limit,
+        )
+        return [StockInfo.from_external_db(raw) for raw in raws]

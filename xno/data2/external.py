@@ -109,6 +109,8 @@ class ExternalDataService:
         self._consumer_order_book_callback = None
         self._consumer_trade_tick_callback = None
         self._consumer_quote_tick_callback = None
+        self._consume_market_info_callback = None
+        self._consume_stock_info_callback = None
 
     def start(
         self,
@@ -117,12 +119,14 @@ class ExternalDataService:
         on_consume_trade_tick: Callable,
         on_consume_quote_tick: Callable,
         on_consume_market_info: Callable,
+        on_consume_stock_info: Callable,
     ):
         self._consumer_ohlcv_callback = on_consume_ohlcv
         self._consumer_order_book_callback = on_consume_order_book
         self._consumer_trade_tick_callback = on_consume_trade_tick
         self._consumer_quote_tick_callback = on_consume_quote_tick
         self._consume_market_info_callback = on_consume_market_info
+        self._consume_stock_info_callback = on_consume_stock_info
 
         self._data_consumer.start()
         self._data_consumer.consume(self._on_consume)
@@ -142,6 +146,8 @@ class ExternalDataService:
                     self._consumer_quote_tick_callback(raw)
                 case "MI":
                     self._consume_market_info_callback(raw)
+                case "SI":
+                    self._consume_stock_info_callback(raw)
         except Exception as e:
             logger.error("Error processing consumed message: %s", raw, exc_info=True)
             raise e
@@ -275,6 +281,38 @@ class ExternalDataService:
 
             if __debug__:
                 logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Market Info data")
+        return rows
+
+    def get_history_stock_info(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+    ):
+        if __debug__:
+            logger.debug(f"Getting stock info for {symbol} since {from_time} to {to_time}")
+
+        with SqlSession(self._database_name) as session:
+            sql = """
+                  SELECT time, symbol, open, high, low, close, avg, ceil, floor, prior
+                  FROM vn_market.history_stock_info
+                  WHERE symbol = :symbol \
+                  """
+            if from_time is not None:
+                sql += " AND time >= :from_time"
+            if to_time is not None:
+                sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
+
+            sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Stock Info data")
         return rows
 
     def stop(self):
