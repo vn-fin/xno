@@ -12,7 +12,9 @@ load_dotenv("../xalpha/.env")
 
 logging.basicConfig(level=logging.DEBUG)
 
-from xno.data2 import DataProvider
+from xno.data2 import DataProviderInstance
+
+DataProvider = DataProviderInstance()
 
 
 def test_trade_tick():
@@ -37,12 +39,14 @@ def test_trade_tick():
 
 def test_history_trade_tick():
     histories = DataProvider.get_history_trade_tick(
-        symbol="MCH", from_time=datetime.now() - timedelta(days=3), to_time=datetime.now()
+        symbol="MCH",
+        from_time=datetime.now() - timedelta(days=3),
+        to_time=datetime.now(),
     )
     print(histories)
 
 
 if __name__ == "__main__":
 
-    # test_trade_tick()
+    test_trade_tick()
     test_history_trade_tick()
