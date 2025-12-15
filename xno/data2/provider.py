@@ -2,12 +2,20 @@ import logging
 import threading
 from datetime import datetime
 
+import xno.data2.store.market_info as MarketInfo_store
 import xno.data2.store.ohlcv as OHLCV_store
 import xno.data2.store.order_book_depth as OrderBookDepth_store
 import xno.data2.store.quote_tick as QuoteTick_store
 import xno.data2.store.trade_tick as TradeTick_store
 from xno.connectors.semaphore import DistributedSemaphore
-from xno.data2.entity import OHLCV, OHLCVs, OrderBookDepth, QuoteTick, TradeTick
+from xno.data2.entity import (
+    OHLCV,
+    MarketInfo,
+    OHLCVs,
+    OrderBookDepth,
+    QuoteTick,
+    TradeTick,
+)
 from xno.data2.external import ExternalDataService
 from xno.utils.dc import timing
 
@@ -30,6 +38,7 @@ class DataProvider:
             on_consume_order_book=self._on_consume_order_book,
             on_consume_trade_tick=self._on_consume_trade_tick,
             on_consume_quote_tick=self._on_consume_quote_tick,
+            on_consume_market_info=self._on_consume_market_info,
         )
 
     def _on_consume_ohlcv(self, raw: dict):
@@ -59,6 +68,10 @@ class DataProvider:
         """
         quote_tick = QuoteTick.from_external_kafka(raw)
         QuoteTick_store.push(quote_tick)
+
+    def _on_consume_market_info(self, raw: dict):
+        market_info = MarketInfo.from_external_kafka(raw)
+        MarketInfo_store.push(market_info)
 
     def stop(self):
         OHLCV_store.stop()
@@ -126,19 +139,22 @@ class DataProvider:
         # Wait for the ongoing sync to complete
         self._ohlcv_sync_locks[lock_key].wait(timeout=20)
 
-    def get_order_book_depth(self, symbol: str, depth: int = 10):
+    def get_order_book_depth(self, symbol: str, depth: int = 10) -> OrderBookDepth | None:
         """
         Get Order Book depth for a given symbol
         """
         return OrderBookDepth_store.get(symbol, depth)
 
+    get_stock_top_price = get_order_book_depth
+
     @timing
-    def get_history_order_book_depths(
+    def get_history_order_book_depth(
         self,
         symbol: str,
         from_time: str | datetime | None = None,
         to_time: str | datetime | None = None,
-    ) -> list:
+        limit: int | None = None,
+    ) -> list[OrderBookDepth]:
         """
         Get Order Book depth history for a given symbol from external DB
         1. Fetch data from external DB
@@ -155,20 +171,84 @@ class DataProvider:
         with DistributedSemaphore(lock_key=f"order_book_sync_{symbol}"):
             if __debug__:
                 logger.debug(f"Syncing OrderBook history data for {symbol} from DB")
-            raws = self._external_data_service.get_history_order_book_depths(
-                symbol=symbol, from_time=from_time, to_time=to_time
+            raws = self._external_data_service.get_history_order_book_depth(
+                symbol=symbol,
+                from_time=from_time,
+                to_time=to_time,
+                limit=limit,
             )
 
         return [OrderBookDepth.from_external_db(raw) for raw in raws]
 
-    def get_trade_tick(self, symbol: str):
+    get_history_stock_top_price = get_history_order_book_depth
+
+    def get_trade_tick(self, symbol: str) -> TradeTick:
         """
         Get Trade Tick for a given symbol
         """
         return TradeTick_store.get(symbol)
+
+    get_stock_tick = get_trade_tick
+
+    @timing
+    def get_history_trade_tick(
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
+    ) -> list[TradeTick]:
+        """
+        Get Trade Tick history for a given symbol from external DB
+        1. Fetch data from external DB
+        2. Parse and return the data
+        """
+        if isinstance(from_time, str):
+            from_time = datetime.fromisoformat(from_time)
+        if isinstance(to_time, str):
+            to_time = datetime.fromisoformat(to_time)
+
+        if from_time >= to_time:
+            raise ValueError("from_time must be less than to_time")
+
+        raws = self._external_data_service.get_history_trade_tick(
+            symbol=symbol,
+            from_time=from_time,
+            to_time=to_time,
+            limit=limit,
+        )
+        return [TradeTick.from_external_db(raw) for raw in raws]
+
+    get_history_stock_tick = get_history_trade_tick
 
     def get_quote_tick(self, symbol: str):
         """
         Get Quote Tick for a given symbol
         """
         return QuoteTick_store.get(symbol)
+
+    def get_market_info(self, symbol: str) -> MarketInfo:
+        return MarketInfo_store.get(symbol)
+
+    def get_history_market_info(
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
+    ) -> list[MarketInfo]:
+        if isinstance(from_time, str):
+            from_time = datetime.fromisoformat(from_time)
+        if isinstance(to_time, str):
+            to_time = datetime.fromisoformat(to_time)
+
+        if from_time >= to_time:
+            raise ValueError("from_time must be less than to_time")
+
+        raws = self._external_data_service.get_history_market_info(
+            symbol=symbol,
+            from_time=from_time,
+            to_time=to_time,
+            limit=limit,
+        )
+        return [MarketInfo.from_external_db(raw) for raw in raws]

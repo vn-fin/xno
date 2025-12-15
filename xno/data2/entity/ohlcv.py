@@ -66,8 +66,8 @@ class OHLCV(BaseEntity):
 
     def to_duckdb_row(self, symbol: str, resolution: str):
         return [
-            symbol,
-            resolution,
+            # symbol,
+            # resolution,
             self.time,
             self.open,
             self.high,
@@ -124,6 +124,7 @@ class OHLCVs(BaseEntity):
             self.validate()
         except Exception as e:
             logger.error("Validation error in OHLCVs: %s", self, exc_info=True)
+            raise e
 
     def validate(self) -> None:
         if not self.symbol:

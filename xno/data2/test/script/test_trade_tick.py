@@ -1,6 +1,7 @@
 import logging
 import os
 import sys
+from datetime import datetime, timedelta
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
 
@@ -11,9 +12,10 @@ load_dotenv("../xalpha/.env")
 
 logging.basicConfig(level=logging.DEBUG)
 
-if __name__ == "__main__":
-    from xno.data2 import DataProvider
+from xno.data2 import DataProvider
 
+
+def test_trade_tick():
     DataProvider.start()
 
     DataProvider._on_consume_trade_tick(
@@ -31,3 +33,16 @@ if __name__ == "__main__":
 
     data = DataProvider.get_trade_tick("MCH")
     print(data)
+
+
+def test_history_trade_tick():
+    histories = DataProvider.get_history_trade_tick(
+        symbol="MCH", from_time=datetime.now() - timedelta(days=3), to_time=datetime.now()
+    )
+    print(histories)
+
+
+if __name__ == "__main__":
+
+    # test_trade_tick()
+    test_history_trade_tick()

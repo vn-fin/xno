@@ -1,5 +1,4 @@
 from .. import settings
-from .entity import OrderBookDepth
 from .provider import DataProvider as DataProviderClass
 
 DataProvider = DataProviderClass(
@@ -15,4 +14,4 @@ DataProvider = DataProviderClass(
     ),
 )
 
-__all__ = ["DataProvider", "OrderBookDepth"]
+__all__ = ["DataProvider"]

@@ -45,6 +45,8 @@ def _process_ohlcv_request(symbol, resolution, from_time, to_time):
 
 
 def benchmark_get_ohlcv():
+    DataProvider.start()
+
     all_data = []
     for symbol in (
         "ACB",
@@ -184,6 +186,8 @@ def test_ohlcv_union():
 
 
 def monitor_ohlcv_realtime_update():
+    DataProvider.start()
+
     data = DataProvider.get_ohlcv(
         symbol="ACB",
         resolution="MIN",
@@ -205,11 +209,9 @@ def monitor_ohlcv_realtime_update():
 
 if __name__ == "__main__":
     try:
-        DataProvider.start()
-
-        benchmark_get_ohlcv()
-        # monitor_ohlcv_realtime_update()
+        # benchmark_get_ohlcv()
         # test_ohlcv_union()
+        monitor_ohlcv_realtime_update()
 
         time.sleep(600)
     finally:
