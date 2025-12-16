@@ -9,6 +9,7 @@ from confluent_kafka import Consumer, KafkaError, KafkaException
 from sqlalchemy import text
 
 from xno.connectors.sql import SqlSession
+from xno.data2.entity.resolution import Resolution
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +110,8 @@ class ExternalDataService:
         self._consumer_order_book_callback = None
         self._consumer_trade_tick_callback = None
         self._consumer_quote_tick_callback = None
+        self._consume_market_info_callback = None
+        self._consume_stock_info_callback = None
 
     def start(
         self,
@@ -116,11 +119,15 @@ class ExternalDataService:
         on_consume_order_book: Callable,
         on_consume_trade_tick: Callable,
         on_consume_quote_tick: Callable,
+        on_consume_market_info: Callable,
+        on_consume_stock_info: Callable,
     ):
         self._consumer_ohlcv_callback = on_consume_ohlcv
         self._consumer_order_book_callback = on_consume_order_book
         self._consumer_trade_tick_callback = on_consume_trade_tick
         self._consumer_quote_tick_callback = on_consume_quote_tick
+        self._consume_market_info_callback = on_consume_market_info
+        self._consume_stock_info_callback = on_consume_stock_info
 
         self._data_consumer.start()
         self._data_consumer.consume(self._on_consume)
@@ -138,11 +145,22 @@ class ExternalDataService:
                     self._consumer_trade_tick_callback(raw)
                 case "SF":
                     self._consumer_quote_tick_callback(raw)
+                case "MI":
+                    self._consume_market_info_callback(raw)
+                case "SI":
+                    self._consume_stock_info_callback(raw)
         except Exception as e:
             logger.error("Error processing consumed message: %s", raw, exc_info=True)
             raise e
 
-    def get_history_ohlcv(self, symbol: str, resolution: str, from_time=None, to_time=None):
+    def get_history_ohlcv(
+        self,
+        symbol: str,
+        resolution: Resolution,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+    ):
         if __debug__:
             logger.debug(f"Getting OHLCV data for {symbol} at {resolution} resolution from {from_time} to {to_time}")
 
@@ -156,9 +174,21 @@ class ExternalDataService:
                 sql += " AND time >= :from_time"
             if to_time is not None:
                 sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
 
+            sql += " ORDER BY time ASC"
+
+            resolution = resolution.to_external()
             result = session.execute(
-                text(sql), dict(symbol=symbol, resolution=resolution, from_time=from_time, to_time=to_time)
+                text(sql),
+                dict(
+                    symbol=symbol,
+                    resolution=resolution,
+                    from_time=from_time,
+                    to_time=to_time,
+                    limit=limit,
+                ),
             )
             rows = result.fetchall()
 
@@ -166,33 +196,189 @@ class ExternalDataService:
                 logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} at {resolution} resolution")
         return rows
 
-    def get_history_order_book_depths(
+    def get_history_order_book_depth(
         self,
         symbol: str,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
+        limit: int | None = None,
+        resolution: Resolution | None = None,
     ):
         if __debug__:
             logger.debug(f"Getting depths for {symbol} since {from_time} to {to_time}")
 
         with SqlSession(self._database_name) as session:
+            if resolution is not None:
+                resolution_str = resolution.to_external_postgre()
+                sql = f"""
+                      SELECT 
+                        time_bucket('{resolution_str}', time) AS time_resampled,
+                        symbol,
+                        LAST(bp, time) AS bp,
+                        LAST(bq, time) AS bq,
+                        LAST(ap, time) AS ap,
+                        LAST(aq, time) AS aq,
+                        SUM(total_bid) AS total_bid,
+                        SUM(total_ask) AS total_ask
+                      FROM vn_market.history_stock_top_price
+                      WHERE symbol = :symbol \
+                      """
+                if from_time is not None:
+                    sql += " AND time >= :from_time"
+                if to_time is not None:
+                    sql += " AND time <= :to_time"
+                sql += " GROUP BY time_resampled, symbol"
+                sql += " ORDER BY time_resampled ASC"
+                if limit is not None:
+                    sql += " LIMIT :limit"
+            else:
+                sql = """
+                    SELECT time, symbol, bp, bq, ap, aq, total_bid, total_ask
+                    FROM vn_market.history_stock_top_price
+                    WHERE symbol = :symbol \
+                    """
+                if from_time is not None:
+                    sql += " AND time >= :from_time"
+                if to_time is not None:
+                    sql += " AND time <= :to_time"
+                if limit is not None:
+                    sql += " LIMIT :limit"
+
+                sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Order Book data")
+        return rows
+
+    def get_history_trade_tick(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int = None,
+    ):
+        if __debug__:
+            logger.debug(f"Getting trade ticks for {symbol} since {from_time} to {to_time}")
+
+        with SqlSession(self._database_name) as session:
             sql = """
-                  SELECT time, symbol, bp, bq, ap, aq, total_bid, total_ask
-                  FROM vn_market.history_stock_top_price
+                  SELECT time, symbol, price, vol, side, source
+                  FROM vn_market.history_stock_tick
                   WHERE symbol = :symbol \
                   """
             if from_time is not None:
                 sql += " AND time >= :from_time"
             if to_time is not None:
                 sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
 
             sql += " ORDER BY time ASC"
 
-            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time))
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
             rows = result.fetchall()
 
             if __debug__:
-                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Order Book data")
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Trade Tick data")
+        return rows
+
+    def get_history_market_info(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+    ):
+        if __debug__:
+            logger.debug(f"Getting market info for {symbol} since {from_time} to {to_time}")
+
+        with SqlSession(self._database_name) as session:
+            sql = """
+                  SELECT time, symbol, name, prior, value, total_vol, total_val, advance, decline, nochange, ceil, floor, change, change_pct
+                  FROM vn_market.history_market_info
+                  WHERE symbol = :symbol \
+                  """
+            if from_time is not None:
+                sql += " AND time >= :from_time"
+            if to_time is not None:
+                sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
+
+            sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Market Info data")
+        return rows
+
+    def get_history_stock_info(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+    ):
+        if __debug__:
+            logger.debug(f"Getting stock info for {symbol} since {from_time} to {to_time}")
+
+        with SqlSession(self._database_name) as session:
+            sql = """
+                  SELECT time, symbol, open, high, low, close, avg, ceil, floor, prior
+                  FROM vn_market.history_stock_info
+                  WHERE symbol = :symbol \
+                  """
+            if from_time is not None:
+                sql += " AND time >= :from_time"
+            if to_time is not None:
+                sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
+
+            sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Stock Info data")
+        return rows
+
+    def get_history_stock_price_board(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+    ):
+        if __debug__:
+            logger.debug(f"Getting stock price board for {symbol} since {from_time} to {to_time}")
+
+        with SqlSession(self._database_name) as session:
+            sql = """
+                  SELECT time, symbol, price, vol, total_vol, total_val, change, change_pct
+                  FROM vn_market.history_stock_price_board
+                  WHERE symbol = :symbol \
+                  """
+            if from_time is not None:
+                sql += " AND time >= :from_time"
+            if to_time is not None:
+                sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
+
+            sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Stock Price Board data")
         return rows
 
     def stop(self):

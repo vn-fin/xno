@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from sqlalchemy.engine.row import Row
 
 from xno.data2.entity.base import BaseEntity
 
@@ -61,6 +62,18 @@ class OrderBookDepth(BaseEntity):
             raise TypeError("total_bid must be an int")
         if not isinstance(self.total_ask, int):
             raise TypeError("total_ask must be an int")
+    
+    def to_dict(self) -> dict:
+        return {
+            "time": self.time,
+            "symbol": self.symbol,
+            "bp": self.bp,
+            "bq": self.bq,
+            "ap": self.ap,
+            "aq": self.aq,
+            "total_bid": self.total_bid,
+            "total_ask": self.total_ask,
+        }
 
     @classmethod
     def from_external_kafka(cls, raw: dict) -> "OrderBookDepth":
@@ -105,9 +118,20 @@ class OrderBookDepth(BaseEntity):
         )
 
     @classmethod
-    def from_external_db(cls, raw) -> "OrderBookDepth":
-        if hasattr(raw, "_mapping"):
-            raw = raw._mapping
+    def from_external_db(cls, raw: Row, depth: int = 10) -> "OrderBookDepth":
+        if isinstance(raw, Row):
+            raw = raw._asdict()
+
+        if not "time" in raw:
+            if not "time_resampled" in raw:
+                raise KeyError("time or time_resampled must be in raw data")
+            raw["time"] = raw["time_resampled"]
+
+        if depth != 10:
+            raw["bp"] = raw["bp"][:depth]
+            raw["bq"] = raw["bq"][:depth]
+            raw["ap"] = raw["ap"][:depth]
+            raw["aq"] = raw["aq"][:depth]
 
         return cls(
             time=raw["time"],

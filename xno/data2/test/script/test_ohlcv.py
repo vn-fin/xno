@@ -13,17 +13,21 @@ load_dotenv("../xalpha/.env")
 
 logging.basicConfig(level=logging.DEBUG)
 
-from xno.data2 import DataProvider
+from xno.data2 import DataProviderInstance
+from xno.data2.entity.resolution import Resolution
 from xno.utils.dc import timing
 
 _close_event = threading.Event()
 _total_requests = 0
+
+DataProvider = DataProviderInstance()
 
 
 def _t_request_ohlcv(all_data, from_time, to_time):
     global _total_requests
     while not _close_event.is_set():
         symbol, resolution = random.choice(all_data)
+        resolution = Resolution.from_external(resolution)
 
         process_id = _total_requests
         _total_requests += 1
@@ -45,6 +49,8 @@ def _process_ohlcv_request(symbol, resolution, from_time, to_time):
 
 
 def benchmark_get_ohlcv():
+    DataProvider.start()
+
     all_data = []
     for symbol in (
         "ACB",
@@ -175,7 +181,7 @@ def test_ohlcv_union():
     print("Fetching OHLCV data including buffer...")
     data = DataProvider.get_ohlcv(
         symbol="ACB",
-        resolution="MIN",
+        resolution=Resolution.from_external("MIN"),
         from_time=datetime.now() - timedelta(days=1),
         to_time=datetime.now(),
     )
@@ -184,9 +190,11 @@ def test_ohlcv_union():
 
 
 def monitor_ohlcv_realtime_update():
+    DataProvider.start()
+
     data = DataProvider.get_ohlcv(
         symbol="ACB",
-        resolution="MIN",
+        resolution=Resolution.from_external("MIN"),
         from_time=datetime.now() - timedelta(days=60),
         to_time=datetime.now(),
     )
@@ -196,20 +204,32 @@ def monitor_ohlcv_realtime_update():
         time.sleep(10)
         data = DataProvider.get_ohlcv(
             symbol="ACB",
-            resolution="MIN",
+            resolution=Resolution.from_external("MIN"),
             from_time=datetime.now() - timedelta(days=60),
             to_time=datetime.now(),
         )
         print(data)
 
 
+def test_dataframe():
+    DataProvider.start()
+
+    data = DataProvider.get_ohlcv_dataframe(
+        symbol="ACB",
+        resolution=Resolution.from_external("HOUR1"),
+        from_time=datetime.now() - timedelta(days=60),
+        to_time=datetime.now(),
+    )
+    print(data)
+    print(type(data))
+
+
 if __name__ == "__main__":
     try:
-        DataProvider.start()
-
-        benchmark_get_ohlcv()
-        # monitor_ohlcv_realtime_update()
+        # benchmark_get_ohlcv()
         # test_ohlcv_union()
+        # monitor_ohlcv_realtime_update()
+        test_dataframe()
 
         time.sleep(600)
     finally:

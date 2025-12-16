@@ -6,6 +6,7 @@ import polars as pl
 import pyarrow as pa
 
 from xno.data2.entity.base import BaseEntity
+from xno.data2.entity.resolution import Resolution
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +67,8 @@ class OHLCV(BaseEntity):
 
     def to_duckdb_row(self, symbol: str, resolution: str):
         return [
-            symbol,
-            resolution,
+            # symbol,
+            # resolution,
             self.time,
             self.open,
             self.high,
@@ -116,7 +117,7 @@ class OHLCV(BaseEntity):
 @dataclass
 class OHLCVs(BaseEntity):
     symbol: str
-    resolution: str
+    resolution: Resolution
     ohlcvs: list[OHLCV]
 
     def __post_init__(self):
@@ -124,6 +125,7 @@ class OHLCVs(BaseEntity):
             self.validate()
         except Exception as e:
             logger.error("Validation error in OHLCVs: %s", self, exc_info=True)
+            raise e
 
     def validate(self) -> None:
         if not self.symbol:
@@ -132,8 +134,8 @@ class OHLCVs(BaseEntity):
             raise TypeError("symbol must be a string")
         if not self.resolution:
             raise ValueError("resolution cannot be empty")
-        if not isinstance(self.resolution, str):
-            raise TypeError("resolution must be a string")
+        if not isinstance(self.resolution, Resolution):
+            raise TypeError("resolution must be a Resolution object")
         if not self.ohlcvs:
             raise ValueError("ohlcvs cannot be empty")
         if not isinstance(self.ohlcvs, list):
@@ -215,7 +217,7 @@ class OHLCVs(BaseEntity):
         return df
 
     @classmethod
-    def from_external_db(cls, symbol: str, resolution: str, raws: list[list]) -> "OHLCVs":
+    def from_external_db(cls, symbol: str, resolution: Resolution, raws: list[list]) -> "OHLCVs":
         ohlcvs = []
         for raw in raws:
             ohlcv = OHLCV.from_external_db_list(raw)

@@ -153,7 +153,7 @@ class DataProvider:
         with DistributedSemaphore(lock_key=f"order_book_sync_{symbol}"):
             if __debug__:
                 logger.debug(f"Syncing OrderBook history data for {symbol} from DB")
-            raws = self._external_data_service.get_history_order_book_depths(
+            raws = self._external_data_service.get_history_order_book_depth(
                 symbol=symbol, from_time=from_time, to_time=to_time
             )
 
