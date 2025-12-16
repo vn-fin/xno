@@ -62,6 +62,18 @@ class OrderBookDepth(BaseEntity):
             raise TypeError("total_bid must be an int")
         if not isinstance(self.total_ask, int):
             raise TypeError("total_ask must be an int")
+    
+    def to_dict(self) -> dict:
+        return {
+            "time": self.time,
+            "symbol": self.symbol,
+            "bp": self.bp,
+            "bq": self.bq,
+            "ap": self.ap,
+            "aq": self.aq,
+            "total_bid": self.total_bid,
+            "total_ask": self.total_ask,
+        }
 
     @classmethod
     def from_external_kafka(cls, raw: dict) -> "OrderBookDepth":

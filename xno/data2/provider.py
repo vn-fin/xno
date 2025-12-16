@@ -206,7 +206,7 @@ class DataProvider:
         from_time: str | datetime | None = None,
         to_time: str | datetime | None = None,
         limit: int | None = None,
-        resolution: Resolution | None = None,
+        resolution: str | Resolution | None = None,
         depth: int = 10,
     ) -> list[OrderBookDepth]:
         """
