@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from sqlalchemy.engine.row import Row
 
 logger = logging.getLogger(__name__)
 
@@ -63,9 +64,9 @@ class StockInfo:
         )
 
     @classmethod
-    def from_external_db(cls, raw) -> "StockInfo":
-        if hasattr(raw, "_mapping"):
-            raw = raw._mapping
+    def from_external_db(cls, raw: Row) -> "StockInfo":
+        if isinstance(raw, Row):
+            raw = raw._asdict()
 
         return cls(
             time=raw["time"],

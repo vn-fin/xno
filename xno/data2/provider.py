@@ -206,6 +206,8 @@ class DataProvider:
         from_time: str | datetime | None = None,
         to_time: str | datetime | None = None,
         limit: int | None = None,
+        resolution: Resolution | None = None,
+        depth: int = 10,
     ) -> list[OrderBookDepth]:
         """
         Get Order Book depth history for a given symbol from external DB
@@ -220,6 +222,8 @@ class DataProvider:
             raise ValueError("from_time must be less than to_time")
         if limit and isinstance(limit, int) and limit <= 0:
             raise ValueError("limit must be a positive integer")
+        if isinstance(resolution, str):
+            resolution = Resolution.from_string(resolution)
 
         with DistributedSemaphore(lock_key=f"order_book_sync_{symbol}"):
             if __debug__:
@@ -229,9 +233,10 @@ class DataProvider:
                 from_time=from_time,
                 to_time=to_time,
                 limit=limit,
+                resolution=resolution,
             )
 
-        return [OrderBookDepth.from_external_db(raw) for raw in raws]
+        return [OrderBookDepth.from_external_db(raw, depth=depth) for raw in raws]
 
     get_history_stock_top_price = get_history_order_book_depth
 

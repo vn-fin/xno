@@ -36,6 +36,21 @@ class Resolution:
         if self.unit == "M" and self.value == 1:
             return "MIN"
         raise ValueError(f"Unsupported resolution: {self.to_string()}")
+    
+    def to_external_postgre(self) -> str:
+        if self.unit == "D":
+            if self.value == 1:
+                return "1 day"
+            return f"{self.value} days"
+        if self.unit == "H":
+            if self.value == 1:
+                return "1 hour"
+            return f"{self.value} hours"
+        if self.unit == "M":
+            if self.value == 1:
+                return "1 minute"
+            return f"{self.value} minutes"
+        raise ValueError(f"Unsupported resolution for postgre: {self.to_string()}")
 
     @classmethod
     def from_external(cls, raw: str) -> "Resolution":

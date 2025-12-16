@@ -202,24 +202,49 @@ class ExternalDataService:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         limit: int | None = None,
+        resolution: Resolution | None = None,
     ):
         if __debug__:
             logger.debug(f"Getting depths for {symbol} since {from_time} to {to_time}")
 
         with SqlSession(self._database_name) as session:
-            sql = """
-                  SELECT time, symbol, bp, bq, ap, aq, total_bid, total_ask
-                  FROM vn_market.history_stock_top_price
-                  WHERE symbol = :symbol \
-                  """
-            if from_time is not None:
-                sql += " AND time >= :from_time"
-            if to_time is not None:
-                sql += " AND time <= :to_time"
-            if limit is not None:
-                sql += " LIMIT :limit"
+            if resolution is not None:
+                resolution_str = resolution.to_external_postgre()
+                sql = f"""
+                      SELECT 
+                        time_bucket('{resolution_str}', time) AS time_resampled,
+                        symbol,
+                        LAST(bp, time) AS bp,
+                        LAST(bq, time) AS bq,
+                        LAST(ap, time) AS ap,
+                        LAST(aq, time) AS aq,
+                        SUM(total_bid) AS total_bid,
+                        SUM(total_ask) AS total_ask
+                      FROM vn_market.history_stock_top_price
+                      WHERE symbol = :symbol \
+                      """
+                if from_time is not None:
+                    sql += " AND time >= :from_time"
+                if to_time is not None:
+                    sql += " AND time <= :to_time"
+                sql += " GROUP BY time_resampled, symbol"
+                sql += " ORDER BY time_resampled ASC"
+                if limit is not None:
+                    sql += " LIMIT :limit"
+            else:
+                sql = """
+                    SELECT time, symbol, bp, bq, ap, aq, total_bid, total_ask
+                    FROM vn_market.history_stock_top_price
+                    WHERE symbol = :symbol \
+                    """
+                if from_time is not None:
+                    sql += " AND time >= :from_time"
+                if to_time is not None:
+                    sql += " AND time <= :to_time"
+                if limit is not None:
+                    sql += " LIMIT :limit"
 
-            sql += " ORDER BY time ASC"
+                sql += " ORDER BY time ASC"
 
             result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
             rows = result.fetchall()

@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 from datetime import datetime
+from sqlalchemy.engine.row import Row
 
 logger = logging.getLogger(__name__)
 
@@ -51,15 +52,16 @@ class StockPriceBoard:
         )
 
     @classmethod
-    def from_external_db(cls, data) -> "StockPriceBoard":
-        if hasattr(data, "_mapping"):
-            data = data._mapping
+    def from_external_db(cls, row: Row) -> "StockPriceBoard":
+        if isinstance(row, Row):
+            row = row._asdict()
+
         return cls(
-            time=data["time"],
-            symbol=data["symbol"],
-            price=float(data["price"]),
-            vol=int(data["vol"]),
-            total_vol=int(data["total_vol"]),
-            change=float(data["change"]),
-            change_pct=float(data["change_pct"]),
+            time=row["time"],
+            symbol=row["symbol"],
+            price=float(row["price"]),
+            vol=int(row["vol"]),
+            total_vol=int(row["total_vol"]),
+            change=float(row["change"]),
+            change_pct=float(row["change_pct"]),
         )

@@ -1,15 +1,19 @@
+import datetime
 import os
 import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
 
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
 
 load_dotenv("../xalpha/.env")
 
+from xno.data2 import DataProviderInstance
+
 
 def test_order_book_depth():
-    from xno.data2 import DataProvider
+    DataProvider = DataProviderInstance()
 
     # DataProvider.start()
     DataProvider._on_consume_order_book(
@@ -55,6 +59,23 @@ def test_order_book_depth():
 
     print("Order book depth test passed.", order_book)
 
+def test_history_order_book_depth():
+    DataProvider = DataProviderInstance()
+
+    history_data = DataProvider.get_history_order_book_depth(
+        symbol="MSB",
+        from_time=datetime.now() - timedelta(days=5),
+        to_time=datetime.now(),
+        resolution="1H",
+    )
+
+    assert len(history_data) > 0
+    for ob in history_data:
+        assert ob.symbol == "MSB"
+        print(ob)
+
+    print("History order book depth test passed.", history_data)
 
 if __name__ == "__main__":
-    test_order_book_depth()
+    # test_order_book_depth()
+    test_history_order_book_depth()
