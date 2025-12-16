@@ -1,6 +1,7 @@
 import logging
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
 
@@ -19,12 +20,14 @@ class DataKafkaConsumer:
     Consume OHLCV/OrderBook messages from Confluent Kafka.
     """
 
-    def __init__(self, topic: str, **kwargs) -> None:
+    def __init__(self, topic: str, max_workers: int = 10, **kwargs) -> None:
         self._start_config = kwargs
         self._topic = topic
+        self._max_workers = max_workers
 
         self._consumer: Optional[Consumer] = None
         self._thread: Optional[threading.Thread] = None
+        self._executor: Optional[ThreadPoolExecutor] = None
         self._stop_event = threading.Event()
 
     def start(self) -> None:
@@ -34,11 +37,17 @@ class DataKafkaConsumer:
 
         self._consumer = Consumer(self._start_config)
         self._consumer.subscribe([self._topic])
+        self._executor = ThreadPoolExecutor(max_workers=self._max_workers, thread_name_prefix="KafkaCallbackWorker")
         self._stop_event.clear()
 
     def stop(self) -> None:
         """Stop consuming and close the consumer."""
         self._stop_event.set()
+        if self._executor is not None:
+            try:
+                self._executor.shutdown(wait=True, cancel_futures=False)
+            except Exception:
+                pass
         if self._consumer is not None:
             try:
                 self._consumer.close()
@@ -55,9 +64,11 @@ class DataKafkaConsumer:
     def _t_consume(self, callback: Callable) -> None:
         if self._consumer is None:
             raise RuntimeError("Consumer not started. Call start() before consuming.")
+        if self._executor is None:
+            raise RuntimeError("Executor not initialized. Call start() before consuming.")
 
         if __debug__:
-            logger.debug(f"Consuming data for {self._topic}")
+            logger.debug(f"Consuming data for {self._topic} with max {self._max_workers} worker threads")
         try:
             while not self._stop_event.is_set():
                 try:
@@ -89,8 +100,8 @@ class DataKafkaConsumer:
                 try:
                     raw = orjson.loads(raw)
 
-                    # TODO: limit threading count
-                    threading.Thread(target=callback, args=(raw,), daemon=True).start()
+                    # Submit callback to thread pool with limited workers
+                    self._executor.submit(callback, raw)
                 except Exception as e:
                     logger.error("Error processing message: %s", raw, exc_info=True)
         finally:
@@ -134,8 +145,6 @@ class ExternalDataService:
 
     def _on_consume(self, raw):
         try:
-            # if __debug__:
-            #     logger.debug("Consumed message: %s", raw)
             match raw["data_type"]:
                 case "OH":
                     self._consumer_ohlcv_callback(raw)
