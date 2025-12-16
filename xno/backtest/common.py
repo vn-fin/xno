@@ -101,6 +101,38 @@ def auto_window(timeframe: str) -> int:
     # ensure minimum and max sanity bounds
     return max(20, min(window, 5000))
 
+def get_performance(return_series, periods=252):
+    return TradePerformance(
+        avg_return=qs.stats.avg_return(return_series),
+        cumulative_return=qs.stats.comp(return_series),
+        cvar=qs.stats.cvar(return_series),
+        gain_to_pain_ratio=qs.stats.gain_to_pain_ratio(return_series),
+        kelly_criterion=qs.stats.kelly_criterion(return_series),
+        max_drawdown=qs.stats.max_drawdown(return_series),
+        omega=qs.stats.omega(return_series),
+        profit_factor=qs.stats.profit_factor(return_series),
+        recovery_factor=qs.stats.recovery_factor(return_series),
+        sharpe=qs.stats.sharpe(return_series, periods=periods),
+        sortino=qs.stats.sortino(return_series, periods=periods),
+        tail_ratio=qs.stats.tail_ratio(return_series),
+        ulcer_index=qs.stats.ulcer_index(return_series),
+        var=qs.stats.value_at_risk(return_series),
+        volatility=qs.stats.volatility(return_series, periods=periods),
+        win_loss_ratio=qs.stats.win_loss_ratio(return_series),
+        win_rate=qs.stats.win_rate(return_series),
+        annual_return=qs.stats.cagr(return_series, periods=periods),
+        calmar=qs.stats.calmar(return_series, periods=periods)
+    )
+
+
+def build_returns_series(times, returns):
+    return_series = pd.Series(
+        returns,
+        index=pd.to_datetime(times)
+    )
+    return return_series
+
+
 class BaseBacktest(abc.ABC):
     fee_rate = None
 
@@ -144,10 +176,7 @@ class BaseBacktest(abc.ABC):
 
     def build_returns(self):
         if self.return_series is None:
-            self.return_series = pd.Series(
-                self.returns,
-                index=pd.to_datetime(self.times)
-            )
+            self.return_series = build_returns_series(self.returns, self.times)
         return self.return_series
 
     # def rolling_metrics(self):
@@ -226,29 +255,7 @@ class BaseBacktest(abc.ABC):
     def get_performance(self) -> TradePerformance:
         if self.performance is not None:
             return self.performance
-        rs = TradePerformance(
-            avg_return=qs.stats.avg_return(self.return_series),
-            cumulative_return=qs.stats.comp(self.return_series),
-            cvar=qs.stats.cvar(self.return_series),
-            gain_to_pain_ratio=qs.stats.gain_to_pain_ratio(self.return_series),
-            kelly_criterion=qs.stats.kelly_criterion(self.return_series),
-            max_drawdown=qs.stats.max_drawdown(self.return_series),
-            omega=qs.stats.omega(self.return_series),
-            profit_factor=qs.stats.profit_factor(self.return_series),
-            recovery_factor=qs.stats.recovery_factor(self.return_series),
-            sharpe=qs.stats.sharpe(self.return_series, periods=self.periods),
-            sortino=qs.stats.sortino(self.return_series, periods=self.periods),
-            tail_ratio=qs.stats.tail_ratio(self.return_series),
-            ulcer_index=qs.stats.ulcer_index(self.return_series),
-            var=qs.stats.value_at_risk(self.return_series),
-            volatility=qs.stats.volatility(self.return_series, periods=self.periods),
-            win_loss_ratio=qs.stats.win_loss_ratio(self.return_series),
-            win_rate=qs.stats.win_rate(self.return_series),
-            annual_return=qs.stats.cagr(self.return_series, periods=self.periods),
-            calmar=qs.stats.calmar(self.return_series, periods=self.periods)
-        )
-
-        self.performance = rs
+        self.performance = get_performance(self.return_series, self.periods)
         return self.performance
 
     def summarize(self) -> BotTradeSummary:
