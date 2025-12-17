@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from xno.data2.technical.entity import OrderBookDepth
 
 
-class L2DataProvider:
+class TechnicalL2DataProvider:
     def __init__(self, symbol: str, resolution: str, from_time: str, to_time: str):
         self._symbol = symbol
         self._resolution = resolution
@@ -664,7 +664,7 @@ class L2DataProvider:
 
 
 if __name__ == "__main__":
-    l2 = L2DataProvider(
+    l2 = TechnicalL2DataProvider(
         symbol="ACB", resolution="1H", from_time="2025-10-01", to_time="2025-12-31"
     )
     l2.load_data()

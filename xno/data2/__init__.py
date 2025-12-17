@@ -1,2 +1,2 @@
-from .technical import TechnicalDataProvider
+from .technical import TechnicalDataProvider, TechnicalL2DataProvider
 from .fundamental import FundamentalDataProvider
