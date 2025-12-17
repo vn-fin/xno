@@ -176,7 +176,7 @@ class BaseBacktest(abc.ABC):
 
     def build_returns(self):
         if self.return_series is None:
-            self.return_series = build_returns_series(self.returns, self.times)
+            self.return_series = build_returns_series(times=self.times, returns=self.returns)
         return self.return_series
 
     # def rolling_metrics(self):
