@@ -12,7 +12,6 @@ import xno.data2.technical.store.quote_tick as QuoteTick_store
 import xno.data2.technical.store.stock_info as StockInfo_store
 import xno.data2.technical.store.stock_price_board as StockPriceBoard_store
 import xno.data2.technical.store.trade_tick as TradeTick_store
-from xno.connectors.semaphore import DistributedSemaphore
 from xno.data2.technical.entity import (
     OHLCV,
     MarketInfo,
@@ -115,13 +114,13 @@ class TechnicalDataProvider:
 
     @timing
     def get_ohlcv(
-            self,
-            symbol: str,
-            resolution: Resolution | str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            factor: int = 1,
-            **kwargs,
+        self,
+        symbol: str,
+        resolution: Resolution | str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        factor: int = 1,
+        **kwargs,
     ):
         """
         Get OHLCV data for a given symbol and resolution
@@ -152,13 +151,14 @@ class TechnicalDataProvider:
         return ohlcv_data
 
     def get_ohlcv_dataframe(
-            self,
-            symbol: str,
-            resolution: Resolution | str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            factor: int = 1,
-            **kwargs,
+        self,
+        symbol: str,
+        resolution: Resolution | str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        factor: int = 1,
+        column_as_upper: bool = True,
+        **kwargs,
     ) -> pd.DataFrame:
         ohlcvs_np = self.get_ohlcv(
             symbol=symbol,
@@ -174,6 +174,12 @@ class TechnicalDataProvider:
 
         df = pd.DataFrame(ohlcvs_np, index=index)
         df.index.set_names("time", inplace=True)
+
+        df.columns = ["open", "high", "low", "close", "volume"]
+
+        if column_as_upper:
+            df = df.rename(columns={"open": "Open", "high": "High", "low": "Low", "close": "Close", "volume": "Volume"})
+
         return df
 
     def _sync_ohlcv_from_db(self, symbol: str, resolution: Resolution):
@@ -190,6 +196,8 @@ class TechnicalDataProvider:
             # First time sync, create a lock for this symbol and resolution
             lock = threading.Event()
             self._ohlcv_sync_locks[lock_key] = lock
+
+            from xno.connectors.semaphore import DistributedSemaphore
 
             with DistributedSemaphore(lock_key=lock_key):
                 if __debug__:
@@ -220,13 +228,13 @@ class TechnicalDataProvider:
     get_stock_top_price = get_order_book_depth
 
     def get_history_order_book_depth(
-            self,
-            symbol: str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            limit: int | None = None,
-            resolution: str | Resolution | None = None,
-            depth: int = 10,
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
+        resolution: str | Resolution | None = None,
+        depth: int = 10,
     ) -> list[OrderBookDepth]:
         """
         Get Order Book depth history for a given symbol from external DB
@@ -243,6 +251,8 @@ class TechnicalDataProvider:
             raise ValueError("limit must be a positive integer")
         if isinstance(resolution, str):
             resolution = Resolution.from_string(resolution)
+
+        from xno.connectors.semaphore import DistributedSemaphore
 
         with DistributedSemaphore(lock_key=f"order_book_sync_{symbol}"):
             if __debug__:
@@ -270,11 +280,11 @@ class TechnicalDataProvider:
     get_stock_tick = get_trade_tick
 
     def get_history_trade_tick(
-            self,
-            symbol: str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            limit: int | None = None,
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
     ) -> list[TradeTick]:
         """
         Get Trade Tick history for a given symbol from external DB
@@ -310,11 +320,11 @@ class TechnicalDataProvider:
         return MarketInfo_store.get(symbol)
 
     def get_history_market_info(
-            self,
-            symbol: str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            limit: int | None = None,
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
     ) -> list[MarketInfo]:
         if isinstance(from_time, str):
             from_time = datetime.fromisoformat(from_time)
@@ -340,11 +350,11 @@ class TechnicalDataProvider:
         return StockInfo_store.get(symbol)
 
     def get_history_stock_info(
-            self,
-            symbol: str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            limit: int | None = None,
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
     ) -> list[StockInfo]:
         if isinstance(from_time, str):
             from_time = datetime.fromisoformat(from_time)
@@ -370,11 +380,11 @@ class TechnicalDataProvider:
         return StockPriceBoard_store.get(symbol)
 
     def get_history_stock_price_board(
-            self,
-            symbol: str,
-            from_time: str | datetime | None = None,
-            to_time: str | datetime | None = None,
-            limit: int | None = None,
+        self,
+        symbol: str,
+        from_time: str | datetime | None = None,
+        to_time: str | datetime | None = None,
+        limit: int | None = None,
     ) -> list[StockPriceBoard]:
         if isinstance(from_time, str):
             from_time = datetime.fromisoformat(from_time)

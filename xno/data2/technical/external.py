@@ -212,7 +212,7 @@ class ExternalDataService:
         resolution: str | None = None,
     ):
         if __debug__:
-            logger.debug(f"Getting depths for {symbol} since {from_time} to {to_time}")
+            logger.debug(f"Getting order book depths for {symbol} since {from_time} to {to_time}")
 
         with SqlSession(self._database_name) as session:
             if resolution is not None:
