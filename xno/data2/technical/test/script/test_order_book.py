@@ -1,13 +1,5 @@
 import datetime
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
-
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
-
-load_dotenv("../xalpha/.env")
 
 from xno.data2.technical import TechnicalDataProvider
 
@@ -59,6 +51,7 @@ def test_order_book_depth():
 
     print("Order book depth test passed.", order_book)
 
+
 def test_history_order_book_depth():
     DataProvider = TechnicalDataProvider.singleton()
 
@@ -75,6 +68,7 @@ def test_history_order_book_depth():
         print(ob)
 
     print("History order book depth test passed.", history_data)
+
 
 if __name__ == "__main__":
     # test_order_book_depth()

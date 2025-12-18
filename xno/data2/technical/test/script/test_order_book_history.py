@@ -1,12 +1,4 @@
-import os
-import sys
 from datetime import datetime, timedelta
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../..")))
-
-from dotenv import load_dotenv
-
-load_dotenv("../xalpha/.env")
 
 from xno.data2.technical import TechnicalDataProvider
 
