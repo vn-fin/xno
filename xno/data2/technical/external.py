@@ -4,10 +4,11 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Any, Callable, Dict, Optional
+from datetime import timedelta, datetime
 
 import orjson
 from confluent_kafka import Consumer, KafkaError, KafkaException
-from sqlalchemy import text
+from sqlalchemy import all_, text
 
 from xno.connectors.sql import SqlSession
 
@@ -211,9 +212,52 @@ class ExternalDataService:
         limit: int | None = None,
         resolution: str | None = None,
     ):
+        """Get historical order book depth data, handling large time ranges by chunking."""
         if __debug__:
             logger.debug(f"Getting order book depths for {symbol} since {from_time} to {to_time}")
 
+        if resolution is not None or not from_time:
+            return self._get_history_order_book_depth(
+                symbol=symbol,
+                from_time=from_time,
+                to_time=to_time,
+                limit=limit,
+                resolution=resolution,
+            )
+
+        all_rows = []
+
+        if not to_time:
+            to_time = datetime.now()
+
+        current_from = from_time
+        while current_from < to_time:
+            current_to = current_from + timedelta(weeks=1)
+            if current_to > to_time:
+                current_to = to_time
+
+            rows = self._get_history_order_book_depth(
+                symbol=symbol,
+                from_time=current_from,
+                to_time=current_to,
+                limit=limit,
+                resolution=resolution,
+            )
+            all_rows.extend(rows)
+
+            current_from = current_to + timedelta(milliseconds=1)
+
+        return all_rows
+
+    def _get_history_order_book_depth(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+        resolution: str | None = None,
+    ):
+        """Get historical order book depth data from the database."""
         with SqlSession(self._database_name) as session:
             if resolution is not None:
                 sql = f"""
@@ -254,9 +298,6 @@ class ExternalDataService:
 
             result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
             rows = result.fetchall()
-
-            if __debug__:
-                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Order Book data")
         return rows
 
     def get_history_trade_tick(
