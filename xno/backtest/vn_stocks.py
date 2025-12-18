@@ -2,6 +2,25 @@ from xno.backtest.common import BaseBacktest, safe_divide, compound_returns
 from xno.models.result import BotBacktestResult
 import numpy as np
 
+from xno.utils.stock import round_to_lot
+
+"""
+df = pd.DataFrame(
+    {
+        "position": self.positions,
+        "position_prev": positions_prev,
+        "trade_sizes": self.trade_sizes,
+        "price": self.prices,
+        "price_diff": price_diff,
+        "pnl": self.pnls,
+        "pnl_cum": pnl_cum,
+        "equities": self.equities,
+        "returns": returns,
+        "cum_rets": cum_rets
+    },
+    index=pd.to_datetime(self.times)
+)
+"""
 
 class BacktestVnStocks(BaseBacktest):
     fee_rate = 0.0015  # 0.15
@@ -25,8 +44,9 @@ class BacktestVnStocks(BaseBacktest):
         # fees_cum = np.cumsum(fees)
         self.equities = self.init_cash + pnl_cum
 
-        self.returns = np.zeros_like(self.equities)
-        self.returns[1:] = safe_divide(self.equities[1:] - self.equities[:-1], self.equities[:-1])
+        self.returns = np.zeros_like(self.pnls)
+        # self.returns[1:] = safe_divide(self.equities[1:] - self.equities[:-1], self.equities[:-1])
+        self.returns[1:] = self.pnls[1:] / self.init_cash
 
         self.cum_rets = compound_returns(self.returns)
 
@@ -38,13 +58,13 @@ class BacktestVnStocks(BaseBacktest):
         # bm_cumret = _compound_returns(bm_returns)
         # bm_pnl = bm_equity - init_cash
 
-        bm_shares = self.init_cash / self.prices[0]
+        bm_shares = round_to_lot(self.init_cash / self.prices[0], 100)
         initial_fee = bm_shares * self.prices[0] * self.fee_rate
         self.bm_equities = bm_shares * self.prices - initial_fee
         self.bm_returns = np.zeros_like(self.bm_equities)
         self.bm_returns[1:] = safe_divide(self.bm_equities[1:] - self.bm_equities[:-1], self.bm_equities[:-1])
         self.bm_cumrets = compound_returns(self.bm_returns)
-        self.bm_pnls = self.bm_returns - self.init_cash
+        self.bm_pnls = self.bm_returns * self.init_cash
 
         return BotBacktestResult(
             times=self.times,
