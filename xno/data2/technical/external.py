@@ -218,7 +218,7 @@ class ExternalDataService:
             if resolution is not None:
                 sql = f"""
                       SELECT 
-                        time_bucket('{resolution_str}', time) AS time_resampled,
+                        time_bucket('{resolution}', time) AS time_resampled,
                         symbol,
                         LAST(bp, time) AS bp,
                         LAST(bq, time) AS bq,
