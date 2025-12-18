@@ -57,7 +57,7 @@ def test_history_order_book_depth():
 
     history_data = DataProvider.get_history_order_book_depth(
         symbol="MSB",
-        from_time=datetime.now() - timedelta(days=5),
+        from_time=datetime.now() - timedelta(weeks=52),
         to_time=datetime.now(),
         resolution="1H",
     )

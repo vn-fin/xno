@@ -1,4 +1,0 @@
-DOCUMENT_GROUP_TA = "Technical Analysis"
-DOCUMENT_GROUP_DATA = "Price Data"
-DOCUMENT_GROUP_L2 = "Level 2 Data"
-DOCUMENT_GROUP_FUNDAMENTAL = "Fundamental Data"
