@@ -1,9 +1,3 @@
-import os, sys
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../../..")))
-
-from dotenv import load_dotenv
-load_dotenv("../xalpha/.env")
-
 from xno.data2.fundamental import FundamentalDataProvider
 
 fundamental_data_provider = FundamentalDataProvider.singleton()

@@ -1,4 +1,5 @@
-data/
+.vscode/
+data_*.csv
 
 ### Python template
 # Byte-compiled / optimized / DLL files
