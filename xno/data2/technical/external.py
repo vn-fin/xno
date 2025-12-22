@@ -430,3 +430,35 @@ class ExternalDataService:
 
     def stop(self):
         self._data_consumer.stop()
+
+    def get_history_price_volume(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        limit: int | None = None,
+    ):
+        if __debug__:
+            logger.debug(f"Getting price volume for {symbol} since {from_time} to {to_time}")
+
+        with SqlSession(self._database_name) as session:
+            sql = """
+                  SELECT time, symbol, price, volume
+                  FROM vn_market.history_stock_price_volume
+                  WHERE symbol = :symbol \
+                  """
+            if from_time is not None:
+                sql += " AND time >= :from_time"
+            if to_time is not None:
+                sql += " AND time <= :to_time"
+            if limit is not None:
+                sql += " LIMIT :limit"
+
+            sql += " ORDER BY time ASC"
+
+            result = session.execute(text(sql), dict(symbol=symbol, from_time=from_time, to_time=to_time, limit=limit))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(f"Loaded {len(rows)} rows from DB for {symbol} Price Volume data")
+        return rows

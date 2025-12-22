@@ -1,4 +1,5 @@
 import logging
+from math import inf
 import threading
 from datetime import datetime
 
@@ -112,6 +113,38 @@ class TechnicalDataProvider:
         OHLCV_store.stop()
         self._external_data_service.stop()
 
+    # --- PRICE VOLUME ---
+    def get_price_volume(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+    ) -> pd.DataFrame:
+        """
+        Get Price Volume data for a given symbol
+        """
+
+        from xno.data2.fundamental.provider import FundamentalDataProvider
+
+        fundamental_provider = FundamentalDataProvider.singleton()
+
+        info = fundamental_provider.get_basic_info(symbol=symbol)
+        if not info:
+            raise ValueError(f"Cannot find basic info for symbol {symbol}")
+
+        df = self.get_ohlcv_dataframe(
+            symbol=symbol,
+            resolution=Resolution.from_string("1D"),
+            from_time=from_time,
+            to_time=to_time,
+        )
+        df["ticker"] = info.ticker
+        df["exchange"] = info.exchange
+        df["currency"] = getattr(info, "currency", "VND")
+
+        return df
+
+    # --- OHLCV ---
     @timing
     def get_ohlcv(
         self,
