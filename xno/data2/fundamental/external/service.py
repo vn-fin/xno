@@ -1,9 +1,15 @@
+import logging
 from typing import Literal
 from datetime import datetime
 
+from sqlalchemy import text
+
+from xno.connectors.sql import SqlSession
 from xno.data2.fundamental.external.tai_chinh_doanh_nghiep import WiGroupTaiChinhDoanhNghiepAPI
 from xno.data2.fundamental.external.thong_tin_co_phieu import WiGroupThongTinCoPhieuAPI
 from xno.data2.fundamental.external.trai_phieu import WiGroupDuLieuTraiPhieuAPI
+
+logger = logging.getLogger(__name__)
 
 
 class WiGroupExternalDataService:
@@ -18,6 +24,7 @@ class WiGroupExternalDataService:
         return cls._instance
 
     def __init__(self, db_name: str = "xno_data"):
+        self._db_name = db_name
         self._thong_tin_co_phieu_api = WiGroupThongTinCoPhieuAPI.singleton(db_name=db_name)
         self._tai_chinh_doanh_nghiep_api = WiGroupTaiChinhDoanhNghiepAPI.singleton(db_name=db_name)
         self._du_lieu_trai_phieu_api = WiGroupDuLieuTraiPhieuAPI.singleton(db_name=db_name)
@@ -53,3 +60,83 @@ class WiGroupExternalDataService:
             to_time=to_time.strftime("%Y-%m-%d") if to_time else None,
             by_time=by_time,
         )
+
+    # --- Price Volume --- #
+    def get_price_volume(self, symbol: str, from_time: datetime | None = None, to_time: datetime | None = None) -> dict:
+        """Get price volume information by stock symbol."""
+        if __debug__:
+            logger.debug("Fetching price volume info for code: %s", symbol)
+
+        with SqlSession("wi_replica") as session:
+            sql = """
+                SELECT
+                    daily_trade.ngay              as date,
+                    listed_info.mack              as ticker,
+                    listed_info.san               as exchange,
+                    'VND'                         as currency,
+                    market_price.vol_tb_15ngay    as adv15,     --latest info
+                    listed_info.soluongniemyet    as sharesout, -- latest info
+                    daily_trade.vonhoa            as cap,
+                    NULL                          as dividend,
+                    daily_trade.tile_chiacotuc_cp as split,
+                    case
+                        when listed_info.vn30 then 'VN30'
+                        when listed_info.vn100 then 'VN100'
+                        when listed_info.vnall then 'VNALL'
+                        when listed_info.vnmid then 'VNMID'
+                        when listed_info.vnsi then 'VNSI'
+                        when listed_info.vnsml then 'VNSML'
+                        when listed_info.vnx50 then 'VNX50'
+                        when listed_info.vnxall then 'VNXALL'
+                        when listed_info.vndiamond then 'VNDIAMOND'
+                        when listed_info.vnfinlead then 'VNFINLEAD'
+                        when listed_info.vnfinselect then 'VNFINSELECT'
+                        when listed_info.hnxindex then 'HNXINDEX'
+                        when listed_info.upcomindex then 'UPCOMINDEX'
+                        when listed_info.hnx30 then 'HNX30'
+                        else NULL
+                        end                       as market,
+                    listed_info.nganhcap2_en_new  as industry,
+                    listed_info.nganhcap1_en_new  as sector,
+                    listed_info.nganhcap3_en_new  as subindustry
+                FROM public.tblchisotaichinh_daily daily_trade
+                        LEFT JOIN public.tblthongtinniemyet_news listed_info USING (mack)
+                        LEFT JOIN public.tblchisotaichinh_giathitruong market_price USING (mack)
+                WHERE daily_trade.mack = :symbol
+                """
+
+            if from_time is not None:
+                sql += " AND daily_trade.ngay >= :from_time"
+            if to_time is not None:
+                sql += " AND daily_trade.ngay < :to_time"
+            sql += " ORDER BY daily_trade.ngay ASC"
+
+            result = session.execute(
+                text(sql),
+                dict(symbol=symbol, from_time=from_time, to_time=to_time),
+            )
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug("Retrieved %d rows for price volume code: %s", len(rows), symbol)
+        return rows
+
+    # --- Balance Sheet --- #
+    def get_balance_sheet(self, symbol: str, period: str, from_time: datetime = None, to_time: datetime = None) -> dict:
+        """Get balance sheet information by stock symbol and period."""
+        if __debug__:
+            logger.debug("Fetching balance sheet info for code: %s", symbol)
+
+        with SqlSession(self._db_name) as session:
+            sql = """
+                
+                """
+            result = session.execute(
+                text(sql),
+                dict(mack=symbol),
+            )
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug("Retrieved %d rows for code: %s", len(rows), symbol)
+        return rows

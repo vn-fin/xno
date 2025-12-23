@@ -26,9 +26,12 @@ class Period:
     def __hash__(self) -> int:
         return hash(self.value)
 
-    def to_vnstock(self) -> str:
-        return self.value
-
+    def to_wigroup(self) -> str:
+        if self.value == "year":
+            return "nam"
+        if self.value == "quarter":
+            return "quy"
+        raise ValueError(f"Unknown period value: {self.value}")
 
 Period.YEAR = Period("YEAR")
 Period.QUARTER = Period("QUARTER")

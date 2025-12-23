@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Self
 
+from sqlalchemy import Row
+
 
 @dataclass(frozen=True)
 class BalanceSheet:
@@ -16,9 +18,12 @@ class BalanceSheet:
     }
 
     @classmethod
-    def from_wigroup(cls, data: dict) -> Self:
+    def from_wigroup(cls, raw: dict | Row) -> Self:
+        if isinstance(raw, Row):
+            raw = raw._asdict()
+
         mapped_data = {}
-        for key, value in data.items():
+        for key, value in raw.items():
             if key in cls._WIGROUP_MAP:
                 mapped_key = cls._WIGROUP_MAP[key]
                 mapped_data[mapped_key] = value

@@ -1,7 +1,8 @@
 import pandas as pd
 from datetime import datetime
 
-from xno.data2.fundamental.entity import Period
+from xno.data2.fundamental.entity import Period, PriceVolume
+from xno.data2.fundamental.entity.balance_sheet import BalanceSheet
 from xno.data2.fundamental.external.service import WiGroupExternalDataService
 from xno.data2.fundamental.store import (
     # RatioStore,
@@ -67,7 +68,7 @@ class FundamentalDataProvider:
 
         self._basic_info_store = BasicInfoStore.singleton()
         # self._ratio_store = RatioStore.singleton()
-        # self._balance_sheet_store = BalanceSheetStore.singleton()
+        self._balance_sheet_store = BalanceSheetStore.singleton()
         # self._income_statement_store = IncomeStatementStore.singleton()
         # self._cash_flow_store = CashFlowStore.singleton()
 
@@ -82,28 +83,44 @@ class FundamentalDataProvider:
             return None
         return data[0]
 
-    # def get_balance_sheet(self, symbol: str, period: str | Period, from_time: datetime | None = None,
-    #                       to_time: datetime | None = None, **kwargs) -> pd.DataFrame:
-    #     if isinstance(period, str):
-    #         period = Period(period)
-    #     if from_time is not None and to_time is not None and from_time >= to_time:
-    #         raise ValueError("from_time must be earlier than to_time")
+    def get_price_volume(
+        self,
+        symbol: str,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+    ) -> list[PriceVolume]:
+        raws = self._external_data_service.get_price_volume(symbol=symbol, from_time=from_time, to_time=to_time)
+        pvs = [PriceVolume.from_db(raw) for raw in raws]
+        return pvs
+    
+    def get_balance_sheet(
+        self,
+        symbol: str,
+        period: str | Period,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+        if isinstance(period, str):
+            period = Period(period)
+        if from_time is not None and to_time is not None and from_time >= to_time:
+            raise ValueError("from_time must be earlier than to_time")
 
-    #     if not self._balance_sheet_store.has(symbol=symbol, period=period):
-    #         raw_df = self._external_data_service.get_balance_sheet(symbol=symbol, period=period.to_vnstock(), **kwargs)
-    #         balance_sheet = BalanceSheet.from_vnstock(symbol=symbol, period=period, dataframe=raw_df)
-    #         self._balance_sheet_store.add(symbol=symbol, period=period, value=balance_sheet)
-    #     else:
-    #         balance_sheet = self._balance_sheet_store.get(symbol=symbol, period=period)
+        if not self._balance_sheet_store.has(symbol=symbol, period=period):
+            raw_df = self._external_data_service.get_balance_sheet(symbol=symbol, period=period.to_wigroup(), **kwargs)
+            balance_sheet = BalanceSheet.from_wigroup(symbol=symbol, period=period, dataframe=raw_df)
+            self._balance_sheet_store.add(symbol=symbol, period=period, value=balance_sheet)
+        else:
+            balance_sheet = self._balance_sheet_store.get(symbol=symbol, period=period)
 
-    #     df = balance_sheet.dataframe
+        df = balance_sheet.dataframe
 
-    #     # Filter by from_time and to_time
-    #     if from_time is not None:
-    #         df = df[df.index >= from_time]
-    #     if to_time is not None:
-    #         df = df[df.index < to_time]
-    #     return df
+        # Filter by from_time and to_time
+        if from_time is not None:
+            df = df[df.index >= from_time]
+        if to_time is not None:
+            df = df[df.index < to_time]
+        return df
 
     # def get_income_statement(self, symbol: str, period: str | Period, from_time: datetime | None = None,
     #                          to_time: datetime | None = None, **kwargs) -> pd.DataFrame:

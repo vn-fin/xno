@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import logging
 from typing import Self
-from sqlalchemy.engine.row import Row
+from sqlalchemy import Row
 
 logger = logging.getLogger(__name__)
 
@@ -51,6 +51,7 @@ class BasicInfo:
         "website": "website",
         "logo": "logo",
         "logo_resize": "logo_resize",
+        # ---
         "donvikiemtoan": "donvikiemtoan",
         "ghichu": "ghichu",
         "nganhcap1": "nganhcap1",

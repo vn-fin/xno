@@ -2,7 +2,7 @@
 # from datetime import datetime, timedelta
 
 # from xno.data2.fundamental.entity.period import Period
-# from xno.data2.fundamental.entity.vnstock.ratio import Ratio
+# from xno.data2.fundamental.entity.ratio import Ratio
 
 
 # class RatioStore:
