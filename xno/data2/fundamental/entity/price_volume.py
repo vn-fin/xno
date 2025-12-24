@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date
 
 import logging
 from typing import Self
@@ -10,8 +10,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class PriceVolume:
-    time: datetime
-    ticker: str
+    date: date
+    symbol: str
     exchange: str
     currency: str = "VND"
     open: float | None = None
@@ -22,15 +22,14 @@ class PriceVolume:
     volume: float | None = None
     adv20: float | None = None
     returns: float | None = None
-    adv15: float | None = None
     sharesout: float | None = None
     cap: float | None = None
-    dividend: float | None = None
-    split: float | None = None
+    cash_dividend_payout_ratio: float | None = None
+    stock_dividend_ratio: float | None = None
     market: str | None = None
     industry: str | None = None
     sector: str | None = None
-    subindustry: str | None = None
+    sub_industry: str | None = None
 
     def __post_init__(self):
         try:
@@ -40,8 +39,8 @@ class PriceVolume:
             raise e
 
     def validate(self) -> bool:
-        if not self.ticker:
-            raise ValueError("Stock ticker cannot be empty.")
+        if not self.symbol:
+            raise ValueError("Stock symbol cannot be empty.")
         if not self.exchange:
             raise ValueError("Stock exchange cannot be empty.")
         if self.volume is not None and self.volume < 0:
@@ -51,8 +50,8 @@ class PriceVolume:
     def to_dict(self, keys: list[str] = None) -> dict:
         if keys is None:
             keys = [
-                "time",
-                "ticker",
+                "date",
+                "symbol",
                 "exchange",
                 "currency",
                 "open",
@@ -62,16 +61,15 @@ class PriceVolume:
                 "vwap",
                 "volume",
                 "adv20",
-                "adv15",
                 "returns",
                 "sharesout",
                 "cap",
-                "dividend",
-                "split",
+                "cash_dividend_payout_ratio",
+                "stock_dividend_ratio",
                 "market",
                 "industry",
                 "sector",
-                "subindustry",
+                "sub_industry",
             ]
         return {key: getattr(self, key) for key in keys}
 
@@ -79,8 +77,5 @@ class PriceVolume:
     def from_db(cls, raw: dict) -> Self:
         if isinstance(raw, Row):
             raw = raw._asdict()
-
-        raw["time"] = datetime.combine(raw["date"], datetime.min.time())
-        del raw["date"]
 
         return cls(**raw)

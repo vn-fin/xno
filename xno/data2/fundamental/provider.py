@@ -5,13 +5,8 @@ from xno.data2.fundamental.entity import Period, PriceVolume
 from xno.data2.fundamental.entity.balance_sheet import BalanceSheet
 from xno.data2.fundamental.external.service import WiGroupExternalDataService
 from xno.data2.fundamental.store import (
-    # RatioStore,
     BalanceSheetStore,
-    # IncomeStatementStore,
-    # CashFlowStore,
 )
-from xno.data2.fundamental.store.basic_info import BasicInfo, BasicInfoStore
-
 import threading
 import logging
 
@@ -65,23 +60,7 @@ class FundamentalDataProvider:
 
     def __init__(self):
         self._external_data_service = WiGroupExternalDataService.singleton()
-
-        self._basic_info_store = BasicInfoStore.singleton()
-        # self._ratio_store = RatioStore.singleton()
         self._balance_sheet_store = BalanceSheetStore.singleton()
-        # self._income_statement_store = IncomeStatementStore.singleton()
-        # self._cash_flow_store = CashFlowStore.singleton()
-
-    def get_basic_info(self, symbol: str) -> dict:
-        with LockTask(name=f"basic_info_{symbol}"):
-            if not self._basic_info_store.has(symbol=symbol):
-                raw = self._external_data_service.get_basic_info(symbol=symbol)
-                info = BasicInfo.from_db(raw)
-                self._basic_info_store.add(symbol=symbol, value=info)
-        data = self._basic_info_store.get(symbol=symbol)
-        if not data:
-            return None
-        return data
 
     def get_price_volume(
         self,
