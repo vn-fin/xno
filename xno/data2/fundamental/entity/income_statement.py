@@ -1,39 +1,75 @@
 from dataclasses import dataclass
+from typing import Self
 
-from xno.data2.fundamental.entity.base import StockEntity
 
+@dataclass(frozen=True)
+class IncomeStatement:
 
-@dataclass
-class IncomeStatement(StockEntity):
-    _DATAFRAME_MAPPING = {
-        "ticker": "ticker",
-        "yearReport": "year_report",
-        "Revenue (Bn. VND)": "revenue",
-        "Revenue YoY (%)": "revenue_yoy",
-        "Attribute to parent company (Bn. VND)": "attribute_to_parent_company",
-        "Attribute to parent company YoY (%)": "attribute_to_parent_company_yoy",
-        "Interest and Similar Income": "interest_and_similar_income",
-        "Interest and Similar Expenses": "interest_and_similar_expenses",
-        "Net Interest Income": "net_interest_income",
-        "Fees and Comission Income": "fees_and_comission_income",
-        "Fees and Comission Expenses": "fees_and_comission_expenses",
-        "Net Fee and Commission Income": "net_fee_and_commission_income",
-        "Net gain (loss) from foreign currency and gold dealings": "net_gain_loss_from_foreign_currency_and_gold_dealings",
-        "Net gain (loss) from trading of trading securities": "net_gain_loss_from_trading_of_trading_securities",
-        "Net gain (loss) from disposal of investment securities": "net_gain_loss_from_disposal_of_investment_securities",
-        "Net Other income/(expenses)": "net_other_income_expenses",
-        "Other expenses": "other_expenses",
-        "Net Other income/expenses": "net_other_income_expenses",
-        "Dividends received": "dividends_received",
-        "Total operating revenue": "total_operating_revenue",
-        "General & Admin Expenses": "general_admin_expenses",
-        "Operating Profit before Provision": "operating_profit_before_provision",
-        "Provision for credit losses": "provision_for_credit_losses",
-        "Profit before tax": "profit_before_tax",
-        "Tax For the Year": "tax_for_the_year",
-        "Business income tax - current": "business_income_tax_current",
-        "Business income tax - deferred": "business_income_tax_deferred",
-        "Net Profit For the Year": "net_profit_for_the_year",
-        "Attributable to parent company": "attributable_to_parent_company",
-        "EPS_basis": "eps_basis"
+    ticker: str
+    fiscal_quarter: int
+    fiscal_year: int
+    revenue: int | None = None
+    revenue_deductions: int | None = None
+    net_sales: int | None = None
+    cost_of_revenue: int | None = None
+    gross_profit: int | None = None
+    financial_income: int | None = None
+    financial_expense: int | None = None
+    interest_expense: int | None = None
+    equity_affiliate_income: int | None = None
+    selling_expense: int | None = None
+    general_admin_expense: int | None = None
+    operating_income: int | None = None
+    other_income: int | None = None
+    other_expense: int | None = None
+    other_profit: int | None = None
+    pretax_income: int | None = None
+    current_tax_expense: int | None = None
+    deferred_tax_expense: int | None = None
+    net_income_after_tax: int | None = None
+    minority_interest: int | None = None
+    net_income: int | None = None
+    basic_eps: float | None = None
+    diluted_eps: float | None = None
+    audit_firm: str | None = None
+    audit_opinion: str | None = None
+
+    _WIGROUP_MAP = {
+        "code": "ticker",
+        "quy": "fiscal_quarter",
+        "nam": "fiscal_year",
+        "doanhthubanhangvacungcapdichvu": "revenue",
+        "cackhoangiamtrudoanhthu": "revenue_deductions",
+        "doanhthuthuanvebanhangvacungcapdichvu": "net_sales",
+        "giavonhangban": "cost_of_revenue",
+        "loinhuangopvebanhangvacungcapdichvu": "gross_profit",
+        "doanhthuhoatdongtaichinh": "financial_income",
+        "chiphitaichinh": "financial_expense",
+        "trongdochiphilaivay": "interest_expense",
+        "phanlailohoaclotrongcongtyliendoanhlienket": "equity_affiliate_income",
+        "chiphibanhang": "selling_expense",
+        "chiphiquanlydoanhnghiep": "general_admin_expense",
+        "loinhuanthuantuhoatdongkinhdoanh": "operating_income",
+        "thunhapkhac": "other_income",
+        "chiphikhac": "other_expense",
+        "loinhuankhac": "other_profit",
+        "tongloinhuanketoantruocthue": "pretax_income",
+        "chiphithuetndnhienhanh": "current_tax_expense",
+        "chiphithuetndnhoanlai": "deferred_tax_expense",
+        "loinhuansauthuethunhapdoanhnghiep": "net_income_after_tax",
+        "loiichcuacodongthieuso_bctn": "minority_interest",
+        "loinhuansauthuecuacongtyme": "net_income",
+        "laicobantrencophieu": "basic_eps",
+        "laisuygiamtrencophieu": "diluted_eps",
+        "donvikiemtoan": "audit_firm",
+        "ykienkiemtoan": "audit_opinion",
     }
+
+    @classmethod
+    def from_wigroup(cls, data: dict) -> Self:
+        mapped_data = {}
+        for key, value in data.items():
+            if key in cls._WIGROUP_MAP:
+                mapped_key = cls._WIGROUP_MAP[key]
+                mapped_data[mapped_key] = value
+        return cls(**mapped_data)

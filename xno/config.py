@@ -62,21 +62,6 @@ class AppConfig:
     # Fee config
     trading_fee = FeeConfig()
 
-    # WI database
-    wi_postgresql_host: str = os.environ.get('WI_POSTGRES_HOST', 'localhost')
-    wi_postgresql_port: int = os.environ.get('WI_POSTGRES_PORT', 5432)
-    wi_postgresql_user: str = os.environ.get('WI_POSTGRES_USER', 'wi')
-    wi_postgresql_password: str = os.environ.get('WI_POSTGRES_PASSWORD', 'wi_password')
-
-    def wi_postgresql_url(self, db_name):
-        return "postgresql://{user}:{password}@{host}:{port}/{db}".format(
-            user=self.wi_postgresql_user,
-            password=quote_plus(self.wi_postgresql_password),
-            host=self.wi_postgresql_host,
-            port=self.wi_postgresql_port,
-            db=db_name
-        )
-
 settings = AppConfig()
 
 # Set up logging
