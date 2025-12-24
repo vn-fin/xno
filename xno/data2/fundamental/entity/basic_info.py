@@ -11,32 +11,32 @@ logger = logging.getLogger(__name__)
 class BasicInfo:
     ticker: str
     name: str
-    name_en: str | None = None
     exchange: str | None = None
-    type: str | None = None
-    description: str | None = None
-    volume_daily: float | None = None
-    total_assets: float | None = None
-    address: str | None = None
-    website: str | None = None
-    logo: str | None = None
-    logo_resize: str | None = None
-
-    donvikiemtoan: str | None = None
-    ghichu: str | None = None
-    nganhcap1: str | None = None
-    nganhcap2: str | None = None
-    nganhcap3: str | None = None
-    nganhcap4: str | None = None
-    ngayniemyet: str | None = None
-    smg: float | None = None
-    vol_tb_15ngay: float | None = None
-    vonhoa: float | None = None
-    dif: float | None = None
-    dif_percent: float | None = None
-    soluongluuhanh: float | None = None
-    soluongniemyet: float | None = None
-    cophieuquy: float | None = None
+    sharesout: float | None = None
+    sector: str | None = None
+    industry: str | None = None
+    subindustry: str | None = None
+    # name_en: str | None = None
+    # type: str | None = None
+    # description: str | None = None
+    # volume_daily: float | None = None
+    # total_assets: float | None = None
+    # address: str | None = None
+    # website: str | None = None
+    # logo: str | None = None
+    # logo_resize: str | None = None
+    # # ---
+    # donvikiemtoan: str | None = None
+    # ghichu: str | None = None
+    # nganhcap4: str | None = None
+    # ngayniemyet: str | None = None
+    # smg: float | None = None
+    # vol_tb_15ngay: float | None = None
+    # vonhoa: float | None = None
+    # dif: float | None = None
+    # dif_percent: float | None = None
+    # soluongluuhanh: float | None = None
+    # cophieuquy: float | None = None
 
     _WIGROUP_MAP = {
         "mack": "ticker",
@@ -51,22 +51,22 @@ class BasicInfo:
         "website": "website",
         "logo": "logo",
         "logo_resize": "logo_resize",
-        # ---
-        "donvikiemtoan": "donvikiemtoan",
-        "ghichu": "ghichu",
-        "nganhcap1": "nganhcap1",
-        "nganhcap2": "nganhcap2",
-        "nganhcap3": "nganhcap3",
-        "nganhcap4": "nganhcap4",
-        "ngayniemyet": "ngayniemyet",
-        "smg": "smg",
-        "vol_tb_15ngay": "vol_tb_15ngay",
-        "vonhoa": "vonhoa",
-        "dif": "dif",
-        "dif_percent": "dif_percent",
-        "soluongluuhanh": "soluongluuhanh",
-        "soluongniemyet": "soluongniemyet",
-        "cophieuquy": "cophieuquy",
+        "soluongniemyet": "sharesout",
+        "nganhcap1": "sector",
+        "nganhcap2": "industry",
+        "nganhcap3": "subindustry",
+        # # ---
+        # "donvikiemtoan": "donvikiemtoan",
+        # "ghichu": "ghichu",
+        # "nganhcap4": "nganhcap4",
+        # "ngayniemyet": "ngayniemyet",
+        # "smg": "smg",
+        # "vol_tb_15ngay": "vol_tb_15ngay",
+        # "vonhoa": "vonhoa",
+        # "dif": "dif",
+        # "dif_percent": "dif_percent",
+        # "soluongluuhanh": "soluongluuhanh",
+        # "cophieuquy": "cophieuquy",
     }
 
     def __post_init__(self):
@@ -94,3 +94,9 @@ class BasicInfo:
                 mapped_key = cls._WIGROUP_MAP[key]
                 mapped_data[mapped_key] = value
         return cls(**mapped_data)
+
+    @classmethod
+    def from_db(cls, raw: Row | dict) -> Self:
+        if isinstance(raw, Row):
+            raw = raw._asdict()
+        return cls(**raw)

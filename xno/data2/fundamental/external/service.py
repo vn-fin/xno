@@ -2,7 +2,7 @@ import logging
 from typing import Literal
 from datetime import datetime
 
-from sqlalchemy import text
+from sqlalchemy import Row, text
 
 from xno.connectors.sql import SqlSession
 from xno.data2.fundamental.external.tai_chinh_doanh_nghiep import WiGroupTaiChinhDoanhNghiepAPI
@@ -62,6 +62,35 @@ class WiGroupExternalDataService:
         )
 
     # --- Price Volume --- #
+    def get_basic_info(self, symbol: str) -> list[Row]:
+        """Get basic stock information by stock symbol."""
+        if __debug__:
+            logger.debug("Fetching basic info for code: %s", symbol)
+
+        with SqlSession("wi_replica") as session:
+            sql = """
+                SELECT
+                    t.mack              as ticker,
+                    t.ten_vi            as name,
+                    t.san               as exchange,
+                    t.soluongniemyet    as sharesout,
+                    t.nganhcap1_en_new  as sector,
+                    t.nganhcap2_en_new  as industry,
+                    t.nganhcap3_en_new  as subindustry
+                FROM public.tblthongtinniemyet_news t
+                WHERE t.mack = :symbol
+                """
+
+            result = session.execute(
+                text(sql),
+                dict(symbol=symbol),
+            )
+            rows = result.fetchone()
+
+            if __debug__:
+                logger.debug("Retrieved %d rows for basic info code: %s", len(rows), symbol)
+        return rows
+    
     def get_price_volume(self, symbol: str, from_time: datetime | None = None, to_time: datetime | None = None) -> dict:
         """Get price volume information by stock symbol."""
         if __debug__:

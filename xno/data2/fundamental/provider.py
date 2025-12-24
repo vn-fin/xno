@@ -75,13 +75,13 @@ class FundamentalDataProvider:
     def get_basic_info(self, symbol: str) -> dict:
         with LockTask(name=f"basic_info_{symbol}"):
             if not self._basic_info_store.has(symbol=symbol):
-                raws = self._external_data_service.get_thong_tin_co_ban(symbol=symbol)
-                infos = [BasicInfo.from_wigroup(raw) for raw in raws]
-                self._basic_info_store.add(symbol=symbol, value=infos)
+                raw = self._external_data_service.get_basic_info(symbol=symbol)
+                info = BasicInfo.from_db(raw)
+                self._basic_info_store.add(symbol=symbol, value=info)
         data = self._basic_info_store.get(symbol=symbol)
         if not data:
             return None
-        return data[0]
+        return data
 
     def get_price_volume(
         self,
