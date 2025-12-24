@@ -5,6 +5,7 @@ class TypeTradeMode(enum.StrEnum):
     Test = "test"
     Simulate = "simulate"
     Live = "live"
+    Global = "global"
 
 class TypeStage(enum.StrEnum):
     Init = "init"
