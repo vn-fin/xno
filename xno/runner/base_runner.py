@@ -53,6 +53,7 @@ class BaseRunner(ABC):
     """
     The base class for running a trading strategy.
     """
+    _price_factor = 1
     def __init__(
             self,
             config: BotConfig,
@@ -339,7 +340,7 @@ class BaseRunner(ABC):
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")
 
-        self.prices = self.datas["Close"].tolist()
+        self.prices = self.datas["Close"].tolist() * self._price_factor
         self.times = self.datas.index.tolist()
         # init the current state
         self.current_state = BotState(

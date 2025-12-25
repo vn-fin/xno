@@ -22,6 +22,7 @@ from xno.utils.stock import round_to_lot
 class VnStockRunner(BaseRunner):
     _hold_days = timedelta(days=3)
     _lot_size = 100
+    _price_factor = 1000  # Based on data
     def __init__(
             self,
             config: BotConfig,
