@@ -118,26 +118,26 @@ class WiGroupExternalDataService:
             sql += " AND fiscal_quarter = 0"
 
             if from_time is not None:
-                sql += " AND fiscal_year >= :from_time"
-                params["from_time"] = from_time.year
+                sql += " AND fiscal_year >= :from_year"
+                params["from_year"] = from_time.year
             if to_time is not None:
-                sql += " AND fiscal_year <= :to_time"
-                params["to_time"] = to_time.year
+                sql += " AND fiscal_year <= :to_year"
+                params["to_year"] = to_time.year
 
         elif period == Period.QUARTERLY:
+            sql += " AND fiscal_quarter != 0"
             if from_time is not None:
-                quarter = (from_time.month - 1) // 3 + 1
-                sql += " AND fiscal_year >= :from_time and fiscal_quarter >= :quarter"
-
-                params["from_time"] = from_time.year
-                params["quarter"] = quarter
-
+                from_quarter = (from_time.month - 1) // 3 + 1
+                sql += (
+                    " AND (fiscal_year > :from_year OR (fiscal_year = :from_year AND fiscal_quarter >= :from_quarter))"
+                )
+                params["from_year"] = from_time.year
+                params["from_quarter"] = from_quarter
             if to_time is not None:
-                quarter = (to_time.month - 1) // 3 + 1
-                sql += " AND fiscal_year <= :to_time and fiscal_quarter <= :quarter"
-
-                params["to_time"] = to_time.year
-                params["quarter"] = quarter
+                to_quarter = (to_time.month - 1) // 3 + 1
+                sql += " AND (fiscal_year < :to_year OR (fiscal_year = :to_year AND fiscal_quarter <= :to_quarter))"
+                params["to_year"] = to_time.year
+                params["to_quarter"] = to_quarter
 
         sql += " ORDER BY symbol, fiscal_year ASC, fiscal_quarter ASC"
 
