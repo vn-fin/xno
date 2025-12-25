@@ -8,7 +8,7 @@ from sqlalchemy import Row
 logger = logging.getLogger(__name__)
 
 
-@dataclass
+@dataclass(frozen=True)
 class PriceVolume:
     date: date
     symbol: str
