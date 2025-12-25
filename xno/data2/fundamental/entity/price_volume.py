@@ -18,7 +18,6 @@ class PriceVolume:
     high: float | None = None
     low: float | None = None
     close: float | None = None
-    vwap: float | None = None
     volume: float | None = None
     adv20: float | None = None
     returns: float | None = None
@@ -58,7 +57,6 @@ class PriceVolume:
                 "high",
                 "low",
                 "close",
-                "vwap",
                 "volume",
                 "adv20",
                 "returns",
