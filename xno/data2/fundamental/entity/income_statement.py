@@ -91,33 +91,4 @@ class IncomeStatement:
         if isinstance(raw, Row):
             raw = raw._asdict()
 
-        return cls(
-            symbol=raw.get("symbol", ""),
-            fiscal_quarter=raw.get("fiscal_quarter", 0),
-            fiscal_year=raw.get("fiscal_year", 0),
-            revenue=raw.get("revenue"),
-            revenue_deductions=raw.get("revenue_deductions"),
-            net_sales=raw.get("net_sales"),
-            cost_of_revenue=raw.get("cost_of_revenue"),
-            gross_profit=raw.get("gross_profit"),
-            financial_income=raw.get("financial_income"),
-            financial_expense=raw.get("financial_expense"),
-            interest_expense=raw.get("interest_expense"),
-            equity_affiliate_income=raw.get("equity_affiliate_income"),
-            selling_expense=raw.get("selling_expense"),
-            general_admin_expense=raw.get("general_admin_expense"),
-            operating_income=raw.get("operating_income"),
-            other_income=raw.get("other_income"),
-            other_expense=raw.get("other_expense"),
-            other_profit=raw.get("other_profit"),
-            pretax_income=raw.get("pretax_income"),
-            current_tax_expense=raw.get("current_tax_expense"),
-            deferred_tax_expense=raw.get("deferred_tax_expense"),
-            net_income_after_tax=raw.get("net_income_after_tax"),
-            minority_interest=raw.get("minority_interest"),
-            net_income=raw.get("net_income"),
-            basic_eps=raw.get("basic_eps"),
-            diluted_eps=raw.get("diluted_eps"),
-            audit_firm=raw.get("audit_firm"),
-            audit_opinion=raw.get("audit_opinion"),
-        )
+        return cls(**raw)

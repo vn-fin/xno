@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 
-from xno.data2.fundamental.entity import Period, PriceVolume, IncomeStatement, BalanceSheet
+from xno.data2.fundamental.entity import Period, PriceVolume, IncomeStatement, BalanceSheet, CashFlow
 from xno.data2.fundamental.external import WiGroupExternalDataService
 from xno.data2.fundamental.store import (
     BalanceSheetStore,
@@ -71,35 +71,6 @@ class FundamentalDataProvider:
         pvs = [PriceVolume.from_db(raw) for raw in raws]
         return pvs
 
-    # def get_balance_sheet(
-    #     self,
-    #     symbol: str,
-    #     period: str | Period,
-    #     from_time: datetime | None = None,
-    #     to_time: datetime | None = None,
-    #     **kwargs,
-    # ) -> pd.DataFrame:
-    #     if isinstance(period, str):
-    #         period = Period(period)
-    #     if from_time is not None and to_time is not None and from_time >= to_time:
-    #         raise ValueError("from_time must be earlier than to_time")
-
-    #     if not self._balance_sheet_store.has(symbol=symbol, period=period):
-    #         raw_df = self._external_data_service.get_balance_sheet(symbol=symbol, period=period.to_wigroup(), **kwargs)
-    #         balance_sheet = BalanceSheet.from_wigroup(symbol=symbol, period=period, dataframe=raw_df)
-    #         self._balance_sheet_store.add(symbol=symbol, period=period, value=balance_sheet)
-    #     else:
-    #         balance_sheet = self._balance_sheet_store.get(symbol=symbol, period=period)
-
-    #     df = balance_sheet.dataframe
-
-    #     # Filter by from_time and to_time
-    #     if from_time is not None:
-    #         df = df[df.index >= from_time]
-    #     if to_time is not None:
-    #         df = df[df.index < to_time]
-    #     return df
-
     def get_income_statement(
         self,
         symbol: str,
@@ -114,53 +85,20 @@ class FundamentalDataProvider:
             raise ValueError("from_time must be earlier than to_time")
 
         raws = self._external_data_service.get_income_statement(symbol=symbol, period=period, **kwargs)
-        income_statements = [IncomeStatement.from_db(raw=raw) for raw in raws]
+        return [IncomeStatement.from_db(raw=raw) for raw in raws]
 
-        return income_statements
+    def get_cash_flow(
+        self,
+        symbol: str,
+        period: str | Period,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        **kwargs,
+    ) -> list[CashFlow]:
+        if isinstance(period, str):
+            period = Period(period)
+        if from_time is not None and to_time is not None and from_time >= to_time:
+            raise ValueError("from_time must be earlier than to_time")
 
-    # def get_cash_flow(self, symbol: str, period: str | Period, from_time: datetime | None = None,
-    #                   to_time: datetime | None = None, **kwargs) -> pd.DataFrame:
-    #     if isinstance(period, str):
-    #         period = Period(period)
-    #     if from_time is not None and to_time is not None and from_time >= to_time:
-    #         raise ValueError("from_time must be earlier than to_time")
-
-    #     if not self._cash_flow_store.has(symbol=symbol, period=period):
-    #         raw_df = self._external_data_service.get_cash_flow(symbol=symbol, period=period.to_vnstock(), **kwargs)
-    #         cash_flow = CashFlow.from_vnstock(symbol=symbol, period=period, dataframe=raw_df)
-    #         self._cash_flow_store.add(symbol=symbol, period=period, value=cash_flow)
-    #     else:
-    #         cash_flow = self._cash_flow_store.get(symbol=symbol, period=period)
-
-    #     df = cash_flow.dataframe
-
-    #     # Filter by from_time and to_time
-    #     if from_time is not None:
-    #         df = df[df.index >= from_time]
-    #     if to_time is not None:
-    #         df = df[df.index < to_time]
-    #     return df
-
-    # def get_ratio(self, symbol: str, period: str | Period, from_time: datetime | None = None,
-    #               to_time: datetime | None = None, **kwargs) -> pd.DataFrame:
-    #     if isinstance(period, str):
-    #         period = Period(period)
-    #     if from_time is not None and to_time is not None and from_time >= to_time:
-    #         raise ValueError("from_time must be earlier than to_time")
-
-    #     if not self._ratio_store.has(symbol=symbol, period=period):
-    #         raw_df = self._external_data_service.get_ratio(symbol=symbol, period=period.to_vnstock(), **kwargs)
-    #         ratio = Ratio.from_vnstock(symbol=symbol, period=period, dataframe=raw_df)
-    #         self._ratio_store.add(symbol=symbol, period=period, value=ratio)
-    #     else:
-    #         ratio = self._ratio_store.get(symbol=symbol, period=period)
-
-    #     df = ratio.dataframe
-
-    #     # Filter by from_time and to_time
-    #     if from_time is not None:
-    #         df = df[df.index >= from_time]
-    #     if to_time is not None:
-    #         df = df[df.index < to_time]
-
-    #     return df
+        raws = self._external_data_service.get_cash_flow(symbol=symbol, period=period, **kwargs)
+        return [CashFlow.from_db(raw=raw) for raw in raws]

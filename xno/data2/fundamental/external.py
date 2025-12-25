@@ -51,7 +51,7 @@ class WiGroupExternalDataService:
                     industry,
                     sector,
                     sub_industry
-                FROM reference.v_trading_universe
+                FROM reference.trading_universe
                 WHERE symbol = :symbol
                 """
 
@@ -108,7 +108,7 @@ class WiGroupExternalDataService:
                 diluted_eps,
                 audit_firm,
                 audit_opinion
-            FROM reference.v_income_statement
+            FROM reference.income_statement
             WHERE symbol = :symbol
             """
 
@@ -149,19 +149,100 @@ class WiGroupExternalDataService:
                 logger.debug("Retrieved %d rows for symbol: %s", len(rows), symbol)
         return rows
 
-    def get_balance_sheet(self, symbol: str, period: str, from_time: datetime = None, to_time: datetime = None) -> dict:
-        """Get balance sheet information by stock symbol and period."""
+    def get_cash_flow(self, symbol: str, period: str, from_time: datetime = None, to_time: datetime = None) -> dict:
+        """Get cash flow information by stock symbol and period."""
         if __debug__:
-            logger.debug("Fetching balance sheet info for symbol: %s", symbol)
+            logger.debug("Fetching cash flow info for symbol: %s", symbol)
+
+        sql = """
+            SELECT
+                symbol,
+                fiscal_year,
+                fiscal_quarter,
+                cashflow_operating_section,
+                pretax_income,
+                adjustments_section,
+                depreciation_amortization,
+                provisions,
+                investment_gain_loss,
+                unrealized_fx_gain_loss,
+                asset_writeoff_gain_loss,
+                interest_expense_adjustment,
+                other_non_cash_adjustments,
+                interest_income,
+                goodwill_amortization,
+                asset_disposal_gain_loss,
+                operating_profit_before_wc_changes,
+                change_in_receivables,
+                change_in_trading_securities,
+                change_in_inventory,
+                change_in_payables,
+                change_in_prepaid_expenses,
+                interest_paid,
+                income_tax_paid,
+                other_operating_cash_inflows,
+                other_operating_cash_outflows,
+                net_cashflow_operating,
+                cashflow_investing_section,
+                capex,
+                proceeds_from_asset_disposal,
+                loans_granted,
+                loans_collected,
+                equity_investment_purchase,
+                equity_investment_sale_proceeds,
+                interest_dividends_received,
+                other_investing_cashflows,
+                net_cashflow_investing,
+                cashflow_financing_section,
+                capital_raised,
+                capital_repayment_buyback,
+                borrowings_received,
+                loan_principal_repaid,
+                lease_principal_paid,
+                dividends_paid,
+                other_financing_cashflows,
+                net_cashflow_financing,
+                net_change_in_cash,
+                cash_beginning,
+                fx_effect_on_cash,
+                cash_ending,
+                audit_firm,
+                audit_opinion
+            FROM reference.cash_flow_statement
+            WHERE symbol = :symbol
+            """
+
+        params = dict(symbol=symbol)
+
+        if period == Period.ANNUALLY:
+            sql += " AND fiscal_quarter = 0"
+
+            if from_time is not None:
+                sql += " AND fiscal_year >= :from_year"
+                params["from_year"] = from_time.year
+            if to_time is not None:
+                sql += " AND fiscal_year <= :to_year"
+                params["to_year"] = to_time.year
+
+        elif period == Period.QUARTERLY:
+            sql += " AND fiscal_quarter != 0"
+            if from_time is not None:
+                from_quarter = (from_time.month - 1) // 3 + 1
+                sql += (
+                    " AND (fiscal_year > :from_year OR (fiscal_year = :from_year AND fiscal_quarter >= :from_quarter))"
+                )
+                params["from_year"] = from_time.year
+                params["from_quarter"] = from_quarter
+            if to_time is not None:
+                to_quarter = (to_time.month - 1) // 3 + 1
+                sql += " AND (fiscal_year < :to_year OR (fiscal_year = :to_year AND fiscal_quarter <= :to_quarter))"
+                params["to_year"] = to_time.year
+                params["to_quarter"] = to_quarter
+
+        sql += " ORDER BY symbol, fiscal_year ASC, fiscal_quarter ASC"
 
         with SqlSession(self._db_name) as session:
-            sql = """
-                
-                """
-            result = session.execute(
-                text(sql),
-                dict(mack=symbol),
-            )
+            result = session.execute(text(sql), params)
             rows = result.fetchall()
 
             if __debug__:
