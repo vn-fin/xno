@@ -340,7 +340,7 @@ class BaseRunner(ABC):
         if len(self.datas) == 0:
             raise RuntimeError(f"No data loaded for symbol={self.symbol} from {self.run_from}")
 
-        self.prices = self.datas["Close"].tolist() * self._price_factor
+        self.prices = (self.datas["Close"] * self._price_factor).tolist()
         self.times = self.datas.index.tolist()
         # init the current state
         self.current_state = BotState(
