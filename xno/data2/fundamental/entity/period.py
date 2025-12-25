@@ -4,8 +4,8 @@ from typing import Final
 class Period:
     value: str
 
-    YEAR: "Final[Period]" = "year"
-    QUARTER: "Final[Period]" = "quarter"
+    ANNUALLY: "Final[Period]" = "ANNUALLY"
+    QUARTERLY: "Final[Period]" = "QUARTERLY"
 
     def __init__(self, value: str):
         self.value = value
@@ -26,12 +26,5 @@ class Period:
     def __hash__(self) -> int:
         return hash(self.value)
 
-    def to_wigroup(self) -> str:
-        if self.value == "year":
-            return "nam"
-        if self.value == "quarter":
-            return "quy"
-        raise ValueError(f"Unknown period value: {self.value}")
-
-Period.YEAR = Period("YEAR")
-Period.QUARTER = Period("QUARTER")
+Period.ANNUALLY = Period("ANNUALLY")
+Period.QUARTERLY = Period("QUARTERLY")
