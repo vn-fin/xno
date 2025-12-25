@@ -51,7 +51,7 @@ class WiGroupExternalDataService:
                     industry,
                     sector,
                     sub_industry
-                FROM reference.trading_universe
+                FROM reference.v_trading_universe
                 WHERE symbol = :symbol
                 """
 
@@ -108,7 +108,7 @@ class WiGroupExternalDataService:
                 diluted_eps,
                 audit_firm,
                 audit_opinion
-            FROM reference.income_statement
+            FROM reference.v_income_statement
             WHERE symbol = :symbol
             """
 
@@ -208,7 +208,7 @@ class WiGroupExternalDataService:
                 cash_ending,
                 audit_firm,
                 audit_opinion
-            FROM reference.cash_flow_statement
+            FROM reference.v_cash_flow_statement
             WHERE symbol = :symbol
             """
 
