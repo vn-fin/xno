@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from datetime import date
 
 import logging
@@ -46,30 +46,8 @@ class PriceVolume:
             raise ValueError("Volume cannot be negative.")
         return True
 
-    def to_dict(self, keys: list[str] = None) -> dict:
-        if keys is None:
-            keys = [
-                "date",
-                "symbol",
-                "exchange",
-                "currency",
-                "open",
-                "high",
-                "low",
-                "close",
-                "volume",
-                "adv20",
-                "returns",
-                "sharesout",
-                "cap",
-                "cash_dividend_payout_ratio",
-                "stock_dividend_ratio",
-                "market",
-                "industry",
-                "sector",
-                "sub_industry",
-            ]
-        return {key: getattr(self, key) for key in keys}
+    def to_dict(self) -> dict:
+        return asdict(self)
 
     @classmethod
     def from_db(cls, raw: dict) -> Self:

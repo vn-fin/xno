@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Self
 import logging
 from sqlalchemy import Row
@@ -52,39 +52,8 @@ class IncomeStatement:
             raise ValueError("Fiscal quarter must be one of {0, 1, 2, 3, 4}.")
         return True
 
-    def to_dict(self, keys: list[str] = None) -> dict:
-        if keys is None:
-            keys = [
-                "symbol",
-                "fiscal_quarter",
-                "fiscal_year",
-                "revenue",
-                "revenue_deductions",
-                "net_sales",
-                "cost_of_revenue",
-                "gross_profit",
-                "financial_income",
-                "financial_expense",
-                "interest_expense",
-                "equity_affiliate_income",
-                "selling_expense",
-                "general_admin_expense",
-                "operating_income",
-                "other_income",
-                "other_expense",
-                "other_profit",
-                "pretax_income",
-                "current_tax_expense",
-                "deferred_tax_expense",
-                "net_income_after_tax",
-                "minority_interest",
-                "net_income",
-                "basic_eps",
-                "diluted_eps",
-                "audit_firm",
-                "audit_opinion",
-            ]
-        return {key: getattr(self, key) for key in keys}
+    def to_dict(self) -> dict:
+        return asdict(self)
 
     @classmethod
     def from_db(cls, raw: Row) -> Self:
