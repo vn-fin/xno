@@ -74,13 +74,11 @@ class FundamentalDataProvider:
     def get_income_statement(
         self,
         symbol: str,
-        period: str | Period,
+        period: Period,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         **kwargs,
     ) -> list[IncomeStatement]:
-        if isinstance(period, str):
-            period = Period(period)
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
@@ -90,15 +88,27 @@ class FundamentalDataProvider:
     def get_cash_flow(
         self,
         symbol: str,
-        period: str | Period,
+        period: Period,
         from_time: datetime | None = None,
         to_time: datetime | None = None,
         **kwargs,
     ) -> list[CashFlow]:
-        if isinstance(period, str):
-            period = Period(period)
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
         raws = self._external_data_service.get_cash_flow(symbol=symbol, period=period, **kwargs)
         return [CashFlow.from_db(raw=raw) for raw in raws]
+
+    def get_balance_sheet(
+        self,
+        symbol: str,
+        period: Period,
+        from_time: datetime | None = None,
+        to_time: datetime | None = None,
+        **kwargs,
+    ) -> list[BalanceSheet]:
+        if from_time is not None and to_time is not None and from_time >= to_time:
+            raise ValueError("from_time must be earlier than to_time")
+
+        raws = self._external_data_service.get_balance_sheet(symbol=symbol, period=period, **kwargs)
+        return [BalanceSheet.from_db(raw=raw) for raw in raws]
