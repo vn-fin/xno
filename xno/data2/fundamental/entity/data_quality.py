@@ -25,7 +25,6 @@ class DataQualityCategory:
 class DataQualityDataset:
     dataset: str
     data_category: str
-    data_source: str
     total_fields: int
     symbols_with_data: int
     data_coverage_pct: float
