@@ -78,7 +78,13 @@ class FundamentalDataProvider:
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
-        raws = self._data_store.get_income_statement(symbol=symbol, period=period, **kwargs)
+        raws = self._data_store.get_income_statement(
+            symbol=symbol,
+            period=period,
+            from_time=from_time,
+            to_time=to_time,
+            **kwargs,
+        )
         return [IncomeStatement.from_db(raw=raw) for raw in raws]
 
     def get_cash_flow(
@@ -92,7 +98,13 @@ class FundamentalDataProvider:
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
-        raws = self._data_store.get_cash_flow(symbol=symbol, period=period, **kwargs)
+        raws = self._data_store.get_cash_flow(
+            symbol=symbol,
+            period=period,
+            from_time=from_time,
+            to_time=to_time,
+            **kwargs,
+        )
         return [CashFlow.from_db(raw=raw) for raw in raws]
 
     def get_balance_sheet(
@@ -106,7 +118,13 @@ class FundamentalDataProvider:
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
-        raws = self._data_store.get_balance_sheet(symbol=symbol, period=period, **kwargs)
+        raws = self._data_store.get_balance_sheet(
+            symbol=symbol,
+            period=period,
+            from_time=from_time,
+            to_time=to_time,
+            **kwargs,
+        )
         return [BalanceSheet.from_db(raw=raw) for raw in raws]
 
     # --- Data Quality Methods ---
