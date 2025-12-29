@@ -452,7 +452,6 @@ class DataStoreService:
                 SELECT
                     dataset,
                     data_category,
-                    data_source,
                     total_fields,
                     symbols_with_data,
                     data_coverage_pct,
