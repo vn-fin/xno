@@ -1,11 +1,8 @@
-import pandas as pd
 from datetime import datetime
 
 from xno.data2.fundamental.entity import Period, PriceVolume, IncomeStatement, BalanceSheet, CashFlow
-from xno.data2.fundamental.external import WiGroupExternalDataService
-from xno.data2.fundamental.store import (
-    BalanceSheetStore,
-)
+from xno.data2.fundamental.store import DataStoreService
+from xno.data2.fundamental.entity.data_quality import DataQualityCategory, DataQualityDataset
 import threading
 import logging
 
@@ -58,8 +55,7 @@ class FundamentalDataProvider:
         return cls._instance
 
     def __init__(self):
-        self._external_data_service = WiGroupExternalDataService.singleton()
-        self._balance_sheet_store = BalanceSheetStore.singleton()
+        self._data_store = DataStoreService.singleton()
 
     def get_price_volume(
         self,
@@ -67,7 +63,7 @@ class FundamentalDataProvider:
         from_time: datetime | None = None,
         to_time: datetime | None = None,
     ) -> list[PriceVolume]:
-        raws = self._external_data_service.get_price_volume(symbol=symbol, from_time=from_time, to_time=to_time)
+        raws = self._data_store.get_price_volume(symbol=symbol, from_time=from_time, to_time=to_time)
         pvs = [PriceVolume.from_db(raw) for raw in raws]
         return pvs
 
@@ -82,7 +78,7 @@ class FundamentalDataProvider:
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
-        raws = self._external_data_service.get_income_statement(symbol=symbol, period=period, **kwargs)
+        raws = self._data_store.get_income_statement(symbol=symbol, period=period, **kwargs)
         return [IncomeStatement.from_db(raw=raw) for raw in raws]
 
     def get_cash_flow(
@@ -96,7 +92,7 @@ class FundamentalDataProvider:
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
-        raws = self._external_data_service.get_cash_flow(symbol=symbol, period=period, **kwargs)
+        raws = self._data_store.get_cash_flow(symbol=symbol, period=period, **kwargs)
         return [CashFlow.from_db(raw=raw) for raw in raws]
 
     def get_balance_sheet(
@@ -110,5 +106,16 @@ class FundamentalDataProvider:
         if from_time is not None and to_time is not None and from_time >= to_time:
             raise ValueError("from_time must be earlier than to_time")
 
-        raws = self._external_data_service.get_balance_sheet(symbol=symbol, period=period, **kwargs)
+        raws = self._data_store.get_balance_sheet(symbol=symbol, period=period, **kwargs)
         return [BalanceSheet.from_db(raw=raw) for raw in raws]
+
+    # --- Data Quality Methods ---
+    def get_data_quality_categories(self) -> list[DataQualityCategory]:
+        rows = self._data_store.get_data_quality_categories()
+        categories = [DataQualityCategory.from_db(row) for row in rows]
+        return categories
+
+    def get_data_quality_datasets(self, data_category: str) -> list[DataQualityDataset]:
+        rows = self._data_store.get_data_quality_datasets(data_category=data_category)
+        datasets = [DataQualityDataset.from_db(row) for row in rows]
+        return datasets
