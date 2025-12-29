@@ -8,9 +8,9 @@ from xno.data2.fundamental.entity.period import Period
 logger = logging.getLogger(__name__)
 
 
-class WiGroupExternalDataService:
+class DataStoreService:
     @classmethod
-    def singleton(cls, **kwargs) -> "WiGroupExternalDataService":
+    def singleton(cls, **kwargs) -> "DataStoreService":
         if not hasattr(cls, "_instance"):
             if not kwargs:
                 kwargs = {
@@ -414,4 +414,62 @@ class WiGroupExternalDataService:
 
             if __debug__:
                 logger.debug("Retrieved %d rows for symbol: %s", len(rows), symbol)
+        return rows
+
+    # --- Data Quality ---
+    def get_data_quality_categories(self) -> dict:
+        """Get data quality categories."""
+        if __debug__:
+            logger.debug("Fetching data quality summary")
+
+        with SqlSession(self._db_name) as session:
+            sql = """
+                SELECT
+                    data_category,
+                    count(dataset) as datasets,
+                    sum(total_fields) as total_fields
+                FROM reference_data_quality.v_data_quality
+                GROUP BY data_category
+                """
+
+            result = session.execute(text(sql))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug("Retrieved %d rows for data quality summary", len(rows))
+        return rows
+
+    def get_data_quality_datasets(self, data_category: str) -> dict:
+        """Get data quality datasets by category."""
+        if __debug__:
+            logger.debug(
+                "Fetching datasets for category: %s",
+                data_category,
+            )
+
+        with SqlSession(self._db_name) as session:
+            sql = """
+                SELECT
+                    dataset,
+                    data_category,
+                    data_source,
+                    total_fields,
+                    symbols_with_data,
+                    data_coverage_pct,
+                    date_coverage_pct
+                FROM reference_data_quality.v_data_quality
+                """
+
+            if data_category:
+                sql += " WHERE data_category = :data_category"
+
+            result = session.execute(text(sql), dict(data_category=data_category))
+            rows = result.fetchall()
+
+            if __debug__:
+                logger.debug(
+                    "Retrieved %d rows for data quality datasets in category: %s",
+                    len(rows),
+                    data_category,
+                )
         return rows
